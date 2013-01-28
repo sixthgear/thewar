@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"net"
-	// "time"
+	"runtime"
 )
 
 const (
@@ -16,10 +17,12 @@ const (
 )
 
 var (
-	port      int
-	world     *Map
-	running   bool
-	pathCache map[int][]int
+	port        int
+	world       *Map
+	running     bool
+	pathCache   map[int][]int
+	channel     = make(chan *Order)
+	connections = make([]net.Conn, 0)
 )
 
 func main() {
@@ -42,26 +45,61 @@ func main() {
 	run()
 }
 
+func dispatchOrders() {
+	for {
+		order := <-channel
+		for i := range connections {
+			fmt.Fprintf(connections[i], "%s\n", order.Encode())
+		}
+	}
+}
+
 func handleConnection(c net.Conn) {
-	fmt.Fprintf(c, "%s\n", world.Encode())
-	log.Println("Served map data to ", c.RemoteAddr().String())
-	c.Close()
+
+	a := c.RemoteAddr().String()
+
+	for {
+
+		data, _ := bufio.NewReader(c).ReadBytes('\n')
+
+		if len(data) == 0 {
+			log.Println("Client closed connection ", a)
+			c.Close()
+			return
+		}
+
+		order := new(Order).Decode(data)
+		log.Printf("%s -> %s", a, data)
+		switch order.Order {
+		case OR_REQMAP:
+			fmt.Fprintf(c, "%s\n", world.Encode())
+		case OR_MOVE:
+			channel <- order
+		default:
+			log.Println("Unhandled order: ", order.Order)
+		}
+
+		runtime.Gosched()
+	}
 }
 
 func run() {
+
+	go dispatchOrders()
 
 	ln, err := net.Listen("tcp", ":11235")
 	if err != nil {
 		// handle error
 	}
 	for {
-		conn, err := ln.Accept()
+		c, err := ln.Accept()
 		if err != nil {
 			// handle error
 			continue
 		}
 
-		go handleConnection(conn)
+		connections = append(connections, c)
+		go handleConnection(c)
 	}
 
 	// t := 0.0

@@ -244,19 +244,8 @@ func (m *Map) Neighbors(hex *Hex) (neighbors []Hex) {
 }
 
 func (m *Map) Encode() []byte {
-	var output []byte
-	output, _ = json.Marshal(m)
+	output, _ := json.Marshal(m)
 	return output
-
-	// output += fmt.Sprintf("seed:%d\n", m.Seed)
-	// output += fmt.Sprintf("dim:%dx%d\n", m.Width, m.Depth)
-	// for i := range m.Grid {
-	// 	output += fmt.Sprintf("%d", m.Grid[i].TerrainType)
-	// 	if i%m.Width == m.Width-1 {
-	// 		output += fmt.Sprintln()
-	// 	}
-	// }
-	// return output
 }
 
 func (m *Map) Decode(data []byte) {

@@ -75,6 +75,7 @@ var specialMods = [...]ObjStats{
 }
 
 type Obj struct {
+	Id          uint    // unique identifier
 	Team        int     // who does this unit belong to?
 	Type        int     // what kind of unit is this?
 	X, Y        int     // current grid position
@@ -116,6 +117,7 @@ func GenerateObjects(world *Map) {
 	for i := 0; i < 40; i++ {
 
 		o := new(Obj)
+		o.Id = uint(i)
 		o.Team = rand.Int() % 4
 		o.Type = rand.Int() % 4
 		o.Facing = rand.Int() % 6

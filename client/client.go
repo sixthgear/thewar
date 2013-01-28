@@ -60,9 +60,13 @@ func initGame() {
 
 	world.Init(M_WIDTH, M_DEPTH)
 	// world.Generate()
-
+	// fmt.Println("Requesting map data...")
+	o := Order{OR_REQMAP, 0, nil}
+	conn.Write(o.Encode())
+	// fmt.Println("Request sent, waiting for response...")
 	data, _ := bufio.NewReader(conn).ReadBytes('\n')
 	world.Decode(data)
+	// fmt.Println("Got it!")
 
 	for i := range world.Objects {
 		o := world.Objects[i]
@@ -126,19 +130,21 @@ func doSelect(mx, my int) {
 	}
 }
 
-func doOrder(mx, my int) {
+func reqOrder(mx, my int) {
 
 	if world.Selected != nil {
 		hex := hexAt(mx, my)
 		if hex != nil && hex.Unit == nil {
 			// is a hex and no other.Unit here
 			// find a path
+			unit := world.Selected.Unit
 			path := make([]int, 0)
 
 			path = FindPath(world, world.Selected, hex)
 
-			world.Selected.Unit.OrderQueue = append(world.Selected.Unit.OrderQueue, Order{OR_MOVE, path})
-			world.Selected.Unit = nil
+			o := Order{OR_MOVE, unit.Id, path}
+			conn.Write(o.Encode())
+
 			world.Selected = nil
 			renderer.clearPath()
 		} else {
@@ -146,6 +152,11 @@ func doOrder(mx, my int) {
 			// do nothing
 		}
 	}
+}
+
+func doOrder(o Order) {
+	obj := world.Objects[o.UnitId]
+	obj.OrderQueue = append(obj.OrderQueue, o)
 }
 
 func update(dt float64) {
@@ -276,10 +287,25 @@ func animate(obj *Obj) {
 
 func run() {
 
+	channel := make(chan *Order)
 	t := 0.0
 	const dt = 1.0 / 60
 	currentTime := float64(time.Now().UnixNano()) / 1000000000
 	accumulator := 0.0
+
+	go func() {
+		for {
+			data, _ := bufio.NewReader(conn).ReadBytes('\n')
+			if len(data) == 0 {
+				log.Println("Server closed connection!")
+				conn.Close()
+				return
+			}
+			order := new(Order).Decode(data)
+			log.Printf("%s", data)
+			channel <- order
+		}
+	}()
 
 	for running {
 
@@ -291,6 +317,21 @@ func run() {
 		for accumulator >= dt {
 
 			kf.PollInput()
+
+			var o *Order
+			select {
+			case o = <-channel:
+				switch o.Order {
+				case OR_MOVE:
+					// log.Println("MOVE")
+					doOrder(*o)
+				default:
+					log.Println("Unhandled order: ", o.Order)
+				}
+
+			default:
+				// nothing to do
+			}
 
 			update(dt)
 			accumulator -= dt
@@ -331,7 +372,7 @@ func handleMouseButton(button, state int) {
 	case button == glfw.MouseLeft && state == 1:
 		doSelect(mx, my)
 	case button == glfw.MouseRight && state == 1:
-		doOrder(mx, my)
+		reqOrder(mx, my)
 	}
 }
 
