@@ -1,5 +1,7 @@
 package gamelib
 
+import "math/rand"
+
 const (
 	OBJ_INFANTRY = iota
 	OBJ_VEHICLE
@@ -106,4 +108,44 @@ func (o *Obj) calcObjStats() {
 	// and for the UI to reflect the impossibility of the action
 	// suitable stats to make impossible are mv and at
 
+}
+
+func GenerateObjects(world *Map) {
+
+	// generate random objects
+	for i := 0; i < 40; i++ {
+
+		o := new(Obj)
+		o.Team = rand.Int() % 4
+		o.Type = rand.Int() % 4
+		o.Facing = rand.Int() % 6
+		o.OrderQueue = make([]Order, 0)
+
+		for {
+			x, y := rand.Int()%(world.Width-8)+4, rand.Int()%(world.Width-8)+4
+			hex := world.Lookup(x, y)
+			t := uint32(0)
+			switch o.Type {
+			case OBJ_INFANTRY:
+				t = T_FOREST
+			case OBJ_VEHICLE:
+				t = T_OUTDOOR
+			case OBJ_BOAT:
+				t = T_RIVER
+			case OBJ_AIRCRAFT:
+				t = hex.TerrainType
+			}
+
+			if hex.TerrainType == t && hex.Unit == nil {
+				world.Objects = append(world.Objects, o)
+				hex.Unit = o
+				o.X, o.Y = x, y
+				o.Fx, o.Fy, o.Fz = world.HexCenter(hex)
+				if o.Type == OBJ_AIRCRAFT {
+					o.Fy = 100
+				}
+				break
+			}
+		}
+	}
 }

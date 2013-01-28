@@ -1,15 +1,22 @@
 package gamelib
 
 import (
-	"fmt"
+	// "archive/zip"
+	"encoding/json"
+	// "fmt"
 	"github.com/sixthgear/noise"
+	"log"
 	"math"
 	"math/rand"
 	"time"
 )
 
 const (
-	BOUNDARY = 4 // number of hexes to mark as unplayable around the edges
+	BOUNDARY   = 4 // number of hexes to mark as unplayable around the edges
+	HEX_SIZE   = 120
+	HEX_WIDTH  = HEX_SIZE * 0.866025403784439
+	HEX_HEIGHT = HEX_SIZE * 0.75
+	HEX_GAP    = 0
 )
 
 const (
@@ -32,7 +39,7 @@ var TMOD = [...][10]ObjStats{
 		T_ROAD:    ObjStats{MOV: +2},
 		T_FOREST:  ObjStats{MOV: -2, VIS: -2, STH: +2, DEF: +2},
 		T_FIELD:   ObjStats{STH: +2},
-		T_RIVER:   ObjStats{MOV: -4, STH: -2},
+		T_RIVER:   ObjStats{MOV: -6, STH: -2},
 		T_BEACH:   ObjStats{MOV: -2, STH: -2},
 		T_BOG:     ObjStats{MOV: -2, STH: -2},
 		T_HILL:    ObjStats{MOV: -3, RAN: +4, VIS: +4, STH: -2, DEF: +1},
@@ -78,45 +85,55 @@ var TMOD = [...][10]ObjStats{
 
 type Map struct {
 	Width, Depth int
-	seed         int64
-	grid         []Hex
-	structures   []*Struct
+	Seed         int64
+	Structures   []*Struct
 	Objects      []*Obj
 	Selected     *Hex
+
+	Grid []Hex
 }
 
 type Hex struct {
 	Index       int
 	Height      float64
 	TerrainType uint32
-	Unit        *Obj
+	Unit        *Obj `json:"-"`
 }
 
 func (m *Map) Init(width, depth int) {
-
-	m.seed = time.Now().UTC().UnixNano()
-	fmt.Println("seed:", m.seed)
-	rand.Seed(m.seed)
-
 	m.Width = width
 	m.Depth = depth
-	m.grid = make([]Hex, width*depth)
+	m.Grid = make([]Hex, width*depth)
 	m.Objects = make([]*Obj, 0)
 	m.Selected = nil
+}
+
+func (m *Map) Index(i int) *Hex {
+	return &m.Grid[i]
+}
+func (m *Map) Lookup(x, y int) *Hex {
+	return &m.Grid[y*m.Width+x]
+}
+
+func (m *Map) Generate() {
+
+	m.Init(m.Width, m.Depth)
+	m.Seed = time.Now().UTC().UnixNano()
+	// fmt.Println("seed:", m.Seed)
+	rand.Seed(m.Seed)
 
 	nx := rand.Float64() * 320000
 	nz := rand.Float64() * 320000
 
 	// generate height map and terrain types
 	for i := 0; i < m.Width*m.Depth; i++ {
-		hex := &m.grid[i]
+		hex := m.Index(i)
 		hex.Index = i
 		x := i % m.Width
 		z := i / m.Width
 		row := float64(z % 2)
 		hex.Height = noise.OctaveNoise2d(nx+float64(x)+row/2, nz+float64(z), 4, 0.25, 1.0/24)
 		hex.Height = (hex.Height + 1.0) * 0.5
-		// fmt.Println(hex.Height)
 
 		switch {
 		case x < BOUNDARY, x >= m.Width-BOUNDARY, z < BOUNDARY, z >= m.Depth-BOUNDARY:
@@ -133,13 +150,6 @@ func (m *Map) Init(width, depth int) {
 			hex.TerrainType = T_HILL
 		}
 	}
-}
-
-func (m *Map) Index(i int) *Hex {
-	return &m.grid[i]
-}
-func (m *Map) Lookup(x, y int) *Hex {
-	return &m.grid[y*m.Width+x]
 }
 
 func (m *Map) Direction(a, b *Hex) (dist int) {
@@ -205,21 +215,55 @@ func (m *Map) Distance(a, b *Hex) (dist int) {
 
 }
 
+func (m *Map) HexCenter(hex *Hex) (fx, fy, fz float32) {
+	x := hex.Index % m.Width
+	z := hex.Index / m.Width
+	fx = float32(x)*HEX_WIDTH + float32(z%2)*HEX_WIDTH/2
+	fy = float32(hex.Height)
+	fz = float32(z) * HEX_HEIGHT
+	return fx, fy, fz
+}
+
 func (m *Map) Neighbors(hex *Hex) (neighbors []Hex) {
 	neighbors = make([]Hex, 0)
 	x := hex.Index % m.Width
 	z := hex.Index / m.Depth
-	neighbors = append(neighbors, m.grid[(z)*m.Width+(x-1)]) // 3
-	neighbors = append(neighbors, m.grid[(z)*m.Width+(x+1)]) // 0
-	neighbors = append(neighbors, m.grid[(z-1)*m.Width+(x)]) // 4 or 5
-	neighbors = append(neighbors, m.grid[(z+1)*m.Width+(x)]) // 1 or 2
+	neighbors = append(neighbors, m.Grid[(z)*m.Width+(x-1)]) // 3
+	neighbors = append(neighbors, m.Grid[(z)*m.Width+(x+1)]) // 0
+	neighbors = append(neighbors, m.Grid[(z-1)*m.Width+(x)]) // 4 or 5
+	neighbors = append(neighbors, m.Grid[(z+1)*m.Width+(x)]) // 1 or 2
 	if z%2 == 0 {
-		neighbors = append(neighbors, m.grid[(z-1)*m.Width+(x-1)]) // 4
-		neighbors = append(neighbors, m.grid[(z+1)*m.Width+(x-1)]) // 2
+		neighbors = append(neighbors, m.Grid[(z-1)*m.Width+(x-1)]) // 4
+		neighbors = append(neighbors, m.Grid[(z+1)*m.Width+(x-1)]) // 2
 	} else {
-		neighbors = append(neighbors, m.grid[(z-1)*m.Width+(x+1)]) // 5
-		neighbors = append(neighbors, m.grid[(z+1)*m.Width+(x+1)]) // 1
+		neighbors = append(neighbors, m.Grid[(z-1)*m.Width+(x+1)]) // 5
+		neighbors = append(neighbors, m.Grid[(z+1)*m.Width+(x+1)]) // 1
 	}
 	return neighbors
 
+}
+
+func (m *Map) Encode() []byte {
+	var output []byte
+	output, _ = json.Marshal(m)
+	return output
+
+	// output += fmt.Sprintf("seed:%d\n", m.Seed)
+	// output += fmt.Sprintf("dim:%dx%d\n", m.Width, m.Depth)
+	// for i := range m.Grid {
+	// 	output += fmt.Sprintf("%d", m.Grid[i].TerrainType)
+	// 	if i%m.Width == m.Width-1 {
+	// 		output += fmt.Sprintln()
+	// 	}
+	// }
+	// return output
+}
+
+func (m *Map) Decode(data []byte) {
+	err := json.Unmarshal(data, m)
+	if err != nil {
+		log.Fatal("Error decoding map data!", err)
+		// fmt.Println("error:", err)
+	}
+	// fmt.Printf("%s", data)
 }

@@ -1,4 +1,4 @@
-package client
+package main
 
 import "github.com/mjard/gl"
 import "github.com/go-gl/glu"
@@ -9,11 +9,29 @@ type Camera struct {
 }
 
 func (c *Camera) Init(width, height, far, fov float64) {
+	gl.Viewport(0, 0, int(width), int(height))
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
 	glu.Perspective(fov, width/height, 1.0, far)
 	gl.MatrixMode(gl.MODELVIEW)
 }
+
+// func (c *Camera) OrthoIn(width, height float64) {
+// 	// 	gl.Viewport(0, 0, w, h)
+// 	gl.PushMatrix()
+// 	gl.PushAttrib(gl.CURRENT_BIT | gl.COLOR_BUFFER_BIT | gl.ENABLE_BIT | gl.LIGHTING_BIT | gl.POLYGON_BIT | gl.LINE_BIT)
+// 	gl.MatrixMode(gl.PROJECTION)
+// 	gl.LoadIdentity()
+// 	gl.Ortho(0, float64(width), float64(height), 0, 0, 1)
+// 	gl.MatrixMode(gl.MODELVIEW)
+// }
+
+// func (c *Camera) OrthoOut() {
+// 	// gl.Viewport(0, 0, w, h)
+// 	gl.PopAttrib()
+// 	gl.PopMatrix()
+
+// }
 
 func (c *Camera) Enter() {
 	gl.PushMatrix()
@@ -24,7 +42,6 @@ func (c *Camera) Enter() {
 	gl.Rotated(c.ry, 0, 1, 0)
 	gl.Rotated(c.rz, 0, 0, 1)
 	gl.Translated(-c.x, -c.y, -c.z)
-
 }
 
 func (c *Camera) Exit() {

@@ -32,14 +32,14 @@ func FindPath(m *Map, start *Hex, goal *Hex) []int {
 	g := func(node *Hex) int { return 1 - TMOD[start.Unit.Type][node.TerrainType].MOV }
 	h := func(node *Hex) int { return m.Distance(node, goal) }
 
-	if start.Unit.Type == OBJ_AIRCRAFT {
-		return []int{goal.Index, start.Index}
-	}
+	// if start.Unit.Type == OBJ_AIRCRAFT {
+	// 	return []int{goal.Index, start.Index}
+	// }
 
 	path := make([]int, 0)
-	queue := make(PriorityQueue, 0, len(m.grid))
-	openset := make(map[int]*Node, len(m.grid))
-	closedset := make(map[int]*Node, len(m.grid))
+	queue := make(PriorityQueue, 0, len(m.Grid))
+	openset := make(map[int]*Node, len(m.Grid))
+	closedset := make(map[int]*Node, len(m.Grid))
 
 	if g(goal) < 9999 {
 		openset[start.Index] = &Node{start.Index, 0, h(start), nil}

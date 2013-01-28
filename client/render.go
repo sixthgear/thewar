@@ -1,10 +1,10 @@
-package client
+package main
 
 import (
 	// "fmt"
 	"github.com/go-gl/glfw"
 	"github.com/mjard/gl"
-	"github.com/sixthgear/thewar/gamelib"
+	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"math"
 )
@@ -17,10 +17,6 @@ type Renderer interface {
 const (
 	W_FAR             = 8192
 	W_FOV             = 60
-	HEX_SIZE          = 120
-	HEX_WIDTH         = HEX_SIZE * 0.866025403784439
-	HEX_HEIGHT        = HEX_SIZE * 0.75
-	HEX_GAP           = 0
 	PRIMITIVE_RESTART = math.MaxUint32
 )
 
@@ -64,16 +60,7 @@ func (r *MapRenderer) Init() {
 	gl.ClearColor(0.1, 0.05, 0.0, 1.0)
 }
 
-func (r *MapRenderer) hexCenter(m *gamelib.Map, hex *gamelib.Hex) (fx, fy, fz float32) {
-	x := hex.Index % m.Width
-	z := hex.Index / m.Width
-	fx = float32(x)*HEX_WIDTH + float32(z%2)*HEX_WIDTH/2
-	fy = float32(hex.Height)
-	fz = float32(z) * HEX_HEIGHT
-	return fx, fy, fz
-}
-
-func (r *MapRenderer) buildVertices(m *gamelib.Map) {
+func (r *MapRenderer) buildVertices(m *Map) {
 
 	r.hexes.GLtype = gl.TRIANGLES
 	r.hexes.indices = make([]uint32, 0)
@@ -87,27 +74,27 @@ func (r *MapRenderer) buildVertices(m *gamelib.Map) {
 
 		hex := m.Index(i)
 		color := [3]float32{}
-		fx, fy, fz := r.hexCenter(m, hex)
+		fx, fy, fz := m.HexCenter(hex)
 
 		switch hex.TerrainType {
-		case gamelib.T_BOUNDS:
+		case T_BOUNDS:
 			v := float32(math.Sqrt(float64(fy))/4) - 0.05
 			color = [3]float32{v, v, v}
 			fy = 0.0
-		case gamelib.T_RIVER:
+		case T_RIVER:
 			color = [3]float32{0.1, 0.1, fy*1.5 + 0.2}
 			fy = 0.125
-		case gamelib.T_BEACH:
+		case T_BEACH:
 			color = [3]float32{fy * 1.6, fy * 1.6, 0.6}
 			fy = 0.125
-		case gamelib.T_OUTDOOR:
+		case T_OUTDOOR:
 			color = [3]float32{0.1, fy, 0.1}
 			fy = 0.375
-		case gamelib.T_FOREST:
+		case T_FOREST:
 			color = [3]float32{0, fy / 3, 0}
 			fy = 0.625
 
-		case gamelib.T_HILL:
+		case T_HILL:
 			v := float32(fy*fy) - 0.3
 			color = [3]float32{v, v, v}
 			fy = 1.875
@@ -146,7 +133,7 @@ func (r *MapRenderer) buildVertices(m *gamelib.Map) {
 	}
 }
 
-func (r *MapRenderer) buildObjects(m *gamelib.Map) {
+func (r *MapRenderer) buildObjects(m *Map) {
 
 	r.objects.GLtype = gl.QUADS
 	r.objects.indices = make([]uint32, 0)
@@ -181,7 +168,6 @@ func (r *MapRenderer) buildObjects(m *gamelib.Map) {
 			x-s, y+16, z+c, // 1
 			x-c, y+16, z-s, // 2
 			x+s, y+16, z-c, // 3
-
 			x+c, y+0, z+s, // 4
 			x-s, y+0, z+c, // 5
 			x-c, y+0, z-s, // 6
@@ -200,15 +186,15 @@ func (r *MapRenderer) buildObjects(m *gamelib.Map) {
 	}
 }
 
-func (r *MapRenderer) buildPath(m *gamelib.Map, path []int) {
+func (r *MapRenderer) buildPath(m *Map, path []int) {
 	r.paths.GLtype = gl.LINES
 	r.paths.indices = make([]uint32, 0)
 	r.paths.vertices = make([]float32, 0)
 
 	for i := 0; i < len(path); i++ {
-		ax, ay, az := r.hexCenter(m, m.Index(path[i]))
+		ax, ay, az := m.HexCenter(m.Index(path[i]))
 		if i == 0 {
-			bx, _, bz := r.hexCenter(m, m.Index(path[i+1]))
+			bx, _, bz := m.HexCenter(m.Index(path[i+1]))
 			a := math.Atan2(float64(bz-az), float64(bx-ax))
 			x0 := ax + float32(math.Cos(a+0.523598776)*30)
 			z0 := az + float32(math.Sin(a+0.523598776)*30)
@@ -233,7 +219,7 @@ func (r *MapRenderer) clearPath() {
 	r.paths.vertices = make([]float32, 0)
 }
 
-func (r *MapRenderer) Render(m *gamelib.Map) {
+func (r *MapRenderer) Render(m *Map) {
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.LoadIdentity()
@@ -279,11 +265,9 @@ func (r *MapRenderer) Render(m *gamelib.Map) {
 		// gl.Enable(gl.BLEND)
 		// gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 		gl.VertexPointer(3, gl.FLOAT, 0, r.paths.vertices)
-
 		gl.LineWidth(5.0)
 		gl.Color4f(1, 1, 0, 1)
 		gl.DrawElements(r.paths.GLtype, len(r.paths.indices), gl.UNSIGNED_INT, r.paths.indices)
-
 		gl.Enable(gl.DEPTH_TEST)
 	}
 

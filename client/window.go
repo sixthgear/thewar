@@ -1,4 +1,4 @@
-package client
+package main
 
 import "log"
 import "github.com/go-gl/glfw"
@@ -9,11 +9,7 @@ const (
 	W_WMODE  = glfw.Windowed // glfw.Fullscreen 
 )
 
-var (
-	prevMouseX, prevMouseY int = glfw.MousePos()
-)
-
-func initWindow(client *Client) {
+func initWindow() {
 
 	if err := glfw.Init(); err != nil {
 		log.Fatal(err.Error())
@@ -30,12 +26,12 @@ func initWindow(client *Client) {
 
 }
 
-func initCallbacks(client *Client) {
-	glfw.SetWindowCloseCallback(func() int { client.running = false; return 0 })
-	glfw.SetMousePosCallback(func(mx, my int) { client.handleMousePos(mx, my) })
-	glfw.SetKeyCallback(func(key, state int) { client.handleKeyDown(key, state) })
-	glfw.SetMouseWheelCallback(func(pos int) { client.handleMouseWheel(pos) })
-	glfw.SetMouseButtonCallback(func(button, state int) { client.handleMouseButton(button, state) })
+func initCallbacks() {
+	glfw.SetWindowCloseCallback(func() int { running = false; return 0 })
+	glfw.SetMousePosCallback(func(mx, my int) { handleMousePos(mx, my) })
+	glfw.SetKeyCallback(func(key, state int) { handleKeyDown(key, state) })
+	glfw.SetMouseWheelCallback(func(pos int) { handleMouseWheel(pos) })
+	glfw.SetMouseButtonCallback(func(button, state int) { handleMouseButton(button, state) })
 }
 
 func closeWindow() {
