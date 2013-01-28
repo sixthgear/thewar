@@ -27,22 +27,21 @@ var (
 	lastPath               int
 	prevMouseX, prevMouseY int = glfw.MousePos()
 	conn                   net.Conn
+	channel                chan *Order = make(chan *Order)
 )
 
 func main() {
 
 	port := flag.Int("port", 11235, "Port to listen on.")
 	ip := flag.String("ip", "0.0.0.0", "Address to connect to.")
-	flag.Parse()
 
-	// connect to server
-	// download map
 	var err error
 	conn, err = net.Dial("tcp", *ip+":"+fmt.Sprintf("%d", *port))
 	if err != nil {
 		log.Fatal("Could not connect. \n", err)
 	}
 
+	flag.Parse()
 	initGame()
 	run()
 }
@@ -58,16 +57,10 @@ func initGame() {
 	renderer.Init()
 	initCallbacks()
 
-	world.Init(M_WIDTH, M_DEPTH)
-	// world.Generate()
-	// fmt.Println("Requesting map data...")
-	o := Order{OR_REQMAP, 0, nil}
-	conn.Write(o.Encode())
-	// fmt.Println("Request sent, waiting for response...")
-	data, _ := bufio.NewReader(conn).ReadBytes('\n')
-	world.Decode(data)
-	// fmt.Println("Got it!")
+	// world.Init(M_WIDTH, M_DEPTH)
+	world, _ = new(Map).Decode(reqMap())
 
+	// reconect object references
 	for i := range world.Objects {
 		o := world.Objects[i]
 		world.Lookup(o.X, o.Y).Unit = o
@@ -120,7 +113,7 @@ func doHover(mx, my int) {
 func doSelect(mx, my int) {
 	hex := hexAt(mx, my)
 	if hex == nil || hex.Unit == nil {
-		// either not a hex, or no.Unit here		
+		// either not a hex, or no unit here		
 		world.Selected = nil
 		renderer.clearPath()
 	} else {
@@ -130,6 +123,13 @@ func doSelect(mx, my int) {
 	}
 }
 
+func reqMap() []byte {
+	o := Order{OR_REQMAP, 0, nil}
+	conn.Write(o.Encode())
+	data, _ := bufio.NewReader(conn).ReadBytes('\n')
+	// world.Decode(data)
+	return data
+}
 func reqOrder(mx, my int) {
 
 	if world.Selected != nil {
@@ -154,8 +154,22 @@ func reqOrder(mx, my int) {
 	}
 }
 
-func doOrder(o Order) {
+func handleOrder(o Order) {
+	switch o.Order {
+	case OR_MOVE:
+		// log.Println("MOVE")
+		doMove(o)
+	default:
+		log.Println("Unhandled order: ", o.Order)
+	}
+}
+
+func doMove(o Order) {
 	obj := world.Objects[o.UnitId]
+	if world.Selected != nil && world.Selected.Unit == obj {
+		world.Selected = nil
+		renderer.clearPath()
+	}
 	obj.OrderQueue = append(obj.OrderQueue, o)
 }
 
@@ -269,43 +283,44 @@ func animate(obj *Obj) {
 				obj.Dest = world.Index(order.Path[len(order.Path)-1])
 				cost := 1 - TMOD[obj.Type][obj.Dest.TerrainType].MOV
 				obj.AnimCounter = 0
-				if obj.Type == OBJ_AIRCRAFT {
-
-					x := float64(obj.Dest.Index%world.Width - obj.X)
-					y := float64(obj.Dest.Index/world.Width - obj.Y)
-					h := int(TURN_TICKS*math.Hypot(y, x)) / 2
-
-					obj.AnimTotal = h
-				} else {
-					obj.AnimTotal = TURN_TICKS * cost
-				}
+				// if obj.Type == OBJ_AIRCRAFT {
+				// 	x := float64(obj.Dest.Index%world.Width - obj.X)
+				// 	y := float64(obj.Dest.Index/world.Width - obj.Y)
+				// 	h := int(TURN_TICKS*math.Hypot(y, x)) / 2
+				// 	obj.AnimTotal = h
+				// } else {
+				obj.AnimTotal = TURN_TICKS * cost
+				// }
 			}
 		}
 
 	}
 }
 
+func communicate(channel chan *Order) {
+
+	for {
+		data, _ := bufio.NewReader(conn).ReadBytes('\n')
+		if len(data) == 0 {
+			log.Println("Server closed connection!")
+			conn.Close()
+			return
+		}
+		order, _ := new(Order).Decode(data)
+		log.Printf("%s", data)
+		channel <- order
+	}
+
+}
+
 func run() {
 
-	channel := make(chan *Order)
 	t := 0.0
 	const dt = 1.0 / 60
 	currentTime := float64(time.Now().UnixNano()) / 1000000000
 	accumulator := 0.0
 
-	go func() {
-		for {
-			data, _ := bufio.NewReader(conn).ReadBytes('\n')
-			if len(data) == 0 {
-				log.Println("Server closed connection!")
-				conn.Close()
-				return
-			}
-			order := new(Order).Decode(data)
-			log.Printf("%s", data)
-			channel <- order
-		}
-	}()
+	go communicate(channel)
 
 	for running {
 
@@ -321,14 +336,7 @@ func run() {
 			var o *Order
 			select {
 			case o = <-channel:
-				switch o.Order {
-				case OR_MOVE:
-					// log.Println("MOVE")
-					doOrder(*o)
-				default:
-					log.Println("Unhandled order: ", o.Order)
-				}
-
+				handleOrder(*o)
 			default:
 				// nothing to do
 			}
@@ -348,7 +356,7 @@ func run() {
 func handleKeyDown(key, state int) {
 	switch {
 	case key == 'R' && state == 1:
-		world.Generate()
+		// world.Generate()
 	case key == glfw.KeyEsc && state == 1:
 		running = false
 	}

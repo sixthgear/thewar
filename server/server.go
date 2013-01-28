@@ -17,114 +17,99 @@ const (
 )
 
 var (
-	port        int
-	world       *Map
-	running     bool
-	pathCache   map[int][]int
+	port    int
+	world   *Map
+	running bool
+	// pathCache   map[int][]int
 	channel     = make(chan *Order)
-	connections = make([]net.Conn, 0)
+	connections = make(map[net.Addr]net.Conn)
 )
 
 func main() {
 
 	port := flag.Int("port", 11235, "Port to listen on.")
 	flag.Parse()
-
 	log.Printf("Starting server on port %d...\n", *port)
 
-	pathCache = make(map[int][]int, 32)
+	// pathCache = make(map[int][]int, 32)
 	running = true
 	world = new(Map)
 	world.Init(M_WIDTH, M_DEPTH)
 	world.Generate()
 	GenerateObjects(world)
 
-	// json := world.Encode()
-	// fmt.Printf("%s\n", json)
-
 	run()
 }
 
-func dispatchOrders() {
+func listen() {
+	// block until a new connection arrives
+	ln, err := net.Listen("tcp", ":11235")
+	if err != nil {
+		log.Fatal("Unable to open socket. ", err)
+	}
 	for {
-		order := <-channel
-		for i := range connections {
-			fmt.Fprintf(connections[i], "%s\n", order.Encode())
+		c, err := ln.Accept()
+		if err != nil {
+			log.Fatal("Error accepting connection. ", err)
+			continue
 		}
+
+		go handlePlayer(c)
+		runtime.Gosched()
 	}
 }
 
-func handleConnection(c net.Conn) {
+func handlePlayer(c net.Conn) {
 
 	a := c.RemoteAddr().String()
 
 	for {
 
-		data, _ := bufio.NewReader(c).ReadBytes('\n')
+		// read a line from the socket
+		data, err := bufio.NewReader(c).ReadBytes('\n')
 
-		if len(data) == 0 {
-			log.Println("Client closed connection ", a)
-			c.Close()
-			return
+		if err != nil {
+			switch err.Error() {
+			case "EOF":
+				log.Println(a, "-> Client closed connection.")
+				delete(connections, c.RemoteAddr())
+				c.Close()
+				return
+			}
 		}
 
-		order := new(Order).Decode(data)
-		log.Printf("%s -> %s", a, data)
+		// decode an order
+		order, err := new(Order).Decode(data)
 		switch order.Order {
 		case OR_REQMAP:
+			// transmit complete world to client
 			fmt.Fprintf(c, "%s\n", world.Encode())
+			// HACK: do not add player to connections until we've sent the map
+			connections[c.RemoteAddr()] = c
 		case OR_MOVE:
+			// standard order
 			channel <- order
 		default:
-			log.Println("Unhandled order: ", order.Order)
+			log.Println(a, " -> Unhandled order: ", order.Order)
 		}
 
+		log.Printf("%s -> %s", a, data)
 		runtime.Gosched()
 	}
 }
 
 func run() {
 
-	go dispatchOrders()
+	go listen()
 
-	ln, err := net.Listen("tcp", ":11235")
-	if err != nil {
-		// handle error
-	}
 	for {
-		c, err := ln.Accept()
-		if err != nil {
-			// handle error
-			continue
+		order := <-channel
+		// dispatch order to all connections
+		for i := range connections {
+			fmt.Fprintf(connections[i], "%s\n", order.Encode())
 		}
 
-		connections = append(connections, c)
-		go handleConnection(c)
+		// TODO actual simulation!
 	}
-
-	// t := 0.0
-	// const dt = 1.0 / 60
-	// currentTime := float64(time.Now().UnixNano()) / 1000000000
-	// accumulator := 0.0
-
-	// for running {
-
-	// 	newTime := float64(time.Now().UnixNano()) / 1000000000
-	// 	frameTime := newTime - currentTime
-	// 	currentTime = newTime
-	// 	accumulator += frameTime
-
-	// 	for accumulator >= dt {
-
-	// 		// TODO read from sockets
-
-	// 		update(dt) // update
-
-	// 		accumulator -= dt
-	// 		t += dt
-	// 		// write to sockets
-	// 	}
-	// 	// renderer.Render(world)
-	// }
 
 }

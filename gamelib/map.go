@@ -2,10 +2,10 @@ package gamelib
 
 import (
 	// "archive/zip"
-	"encoding/json"
 	// "fmt"
+	// "log"
+	"encoding/json"
 	"github.com/sixthgear/noise"
-	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -248,11 +248,7 @@ func (m *Map) Encode() []byte {
 	return output
 }
 
-func (m *Map) Decode(data []byte) {
+func (m *Map) Decode(data []byte) (*Map, error) {
 	err := json.Unmarshal(data, m)
-	if err != nil {
-		log.Fatal("Error decoding map data!", err)
-		// fmt.Println("error:", err)
-	}
-	// fmt.Printf("%s", data)
+	return m, err
 }

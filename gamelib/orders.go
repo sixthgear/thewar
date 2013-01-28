@@ -2,7 +2,7 @@ package gamelib
 
 import (
 	"encoding/json"
-	"log"
+	// "log"
 )
 
 const (
@@ -25,10 +25,7 @@ func (o *Order) Encode() []byte {
 	return append(output, '\n')
 }
 
-func (o *Order) Decode(data []byte) *Order {
+func (o *Order) Decode(data []byte) (*Order, error) {
 	err := json.Unmarshal(data, o)
-	if err != nil {
-		log.Println("Error decoding order data! ", data)
-	}
-	return o
+	return o, err
 }
