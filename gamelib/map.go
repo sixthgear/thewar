@@ -95,7 +95,8 @@ type Map struct {
 
 type Hex struct {
 	Index       int
-	Height      float64
+	Height      float32
+	Color       [3]float32
 	TerrainType uint32
 	Unit        *Obj `json:"-"`
 }
@@ -132,22 +133,36 @@ func (m *Map) Generate() {
 		x := i % m.Width
 		z := i / m.Width
 		row := float64(z % 2)
-		hex.Height = noise.OctaveNoise2d(nx+float64(x)+row/2, nz+float64(z), 4, 0.25, 1.0/24)
+		hex.Height = float32(noise.OctaveNoise2d(nx+float64(x)+row/2, nz+float64(z), 4, 0.25, 1.0/24))
 		hex.Height = (hex.Height + 1.0) * 0.5
 
 		switch {
 		case x < BOUNDARY, x >= m.Width-BOUNDARY, z < BOUNDARY, z >= m.Depth-BOUNDARY:
 			hex.TerrainType = T_BOUNDS
+			v := float32(math.Sqrt(float64(hex.Height))/4) - 0.05
+			hex.Color = [3]float32{v, v, v}
+			hex.Height = 0.0 * 32
 		case hex.Height < 0.375:
 			hex.TerrainType = T_RIVER
+			hex.Color = [3]float32{0.1, 0.1, hex.Height*1.5 + 0.2}
+			hex.Height = 0.125 * 32
 		case hex.Height < 0.5:
 			hex.TerrainType = T_BEACH
+			hex.Color = [3]float32{hex.Height * 1.6, hex.Height * 1.6, 0.6}
+			hex.Height = 0.125 * 32
 		case hex.Height < 0.625:
 			hex.TerrainType = T_OUTDOOR
+			hex.Color = [3]float32{0.1, hex.Height, 0.1}
+			hex.Height = 0.375 * 32
 		case hex.Height < 0.75:
 			hex.TerrainType = T_FOREST
+			hex.Color = [3]float32{0, hex.Height / 3, 0}
+			hex.Height = 0.625 * 32
 		default:
 			hex.TerrainType = T_HILL
+			v := float32(hex.Height*hex.Height) - 0.3
+			hex.Color = [3]float32{v, v, v}
+			hex.Height = 1.875 * 32
 		}
 	}
 }

@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	TURN_TICKS = 12
-	M_WIDTH    = 64
-	M_DEPTH    = 64
+	M_WIDTH = 64
+	M_DEPTH = 64
 )
 
 var (
@@ -60,14 +59,13 @@ func initGame() {
 
 	// world.Init(M_WIDTH, M_DEPTH)
 	world, _ = new(Map).Decode(reqMap())
+	renderer.buildVertices(world)
 
 	// reconect object references
 	for i := range world.Objects {
 		o := world.Objects[i]
 		world.Lookup(o.X, o.Y).Unit = o
 	}
-
-	renderer.buildVertices(world)
 	// GenerateObjects(world)
 	renderer.buildObjects(world)
 	renderer.clearPath()
@@ -169,7 +167,9 @@ func doMove(o Order) {
 		world.Selected = nil
 		renderer.clearPath()
 	}
+	world.Lookup(obj.X, obj.Y).Unit = nil
 	obj.OrderQueue = append(obj.OrderQueue, o)
+	obj.NextDest(world)
 }
 
 func update(dt float64) {
@@ -205,17 +205,14 @@ func animate(obj *Obj) {
 	if len(obj.OrderQueue) > 0 {
 
 		order := &obj.OrderQueue[0]
+
 		if obj.Dest != nil {
+			obj.AnimCounter++
+
 			// look at order at front of queue
 			a := world.Lookup(obj.X, obj.Y)
 			b := obj.Dest
 
-			// next := world.Index(order.Path[len(order.Path)-1])
-			// if theres at least two more nodes in the path
-			// and the node two turns from now has the same x
-			// and the next node has the same terrain type
-			// interpolate obj.fx,fy,fz
-			// from prev to next
 			obj.Facing = world.Direction(a, b)
 			x0, y0, z0 := world.HexCenter(a)
 			x1, y1, z1 := world.HexCenter(b)
@@ -224,6 +221,7 @@ func animate(obj *Obj) {
 				//airplanes fly
 				y0, y1 = 100, 100
 			}
+
 			if a.Unit != nil {
 				y0 += 16
 			}
@@ -259,40 +257,23 @@ func animate(obj *Obj) {
 			}
 
 			renderer.buildObjects(world)
-			obj.AnimCounter++
-		}
-		if obj.Dest == nil || obj.AnimCounter >= obj.AnimTotal {
+			if obj.AnimCounter >= obj.AnimTotal {
 
-			// if obj.Dest == nil {
-			// 	order.Path = order.Path[0 : len(order.Path)-1] // pop				
-			// }
-
-			newHex := world.Index(order.Path[len(order.Path)-1])
-			order.Path = order.Path[0 : len(order.Path)-1] // pop
-			obj.X = newHex.Index % world.Width
-			obj.Y = newHex.Index / world.Width
-
-			if len(order.Path) == 0 {
-				// remove order
-				obj.Dest = nil
-				obj.OrderQueue = obj.OrderQueue[0 : len(obj.OrderQueue)-1]
-				newHex.Unit = obj
-				return
-			} else {
-				obj.Dest = world.Index(order.Path[len(order.Path)-1])
-				cost := 1 - TMOD[obj.Type][obj.Dest.TerrainType].MOV
-				obj.AnimCounter = 0
-				// if obj.Type == OBJ_AIRCRAFT {
-				// 	x := float64(obj.Dest.Index%world.Width - obj.X)
-				// 	y := float64(obj.Dest.Index/world.Width - obj.Y)
-				// 	h := int(TURN_TICKS*math.Hypot(y, x)) / 2
-				// 	obj.AnimTotal = h
-				// } else {
-				obj.AnimTotal = TURN_TICKS * cost
-				// }
+				newHex := world.Index(order.Path[len(order.Path)-1])
+				order.Path = order.Path[0 : len(order.Path)-1] // pop
+				obj.X = newHex.Index % world.Width
+				obj.Y = newHex.Index / world.Width
+				if len(order.Path) == 0 {
+					// remove order
+					obj.Dest = nil
+					obj.OrderQueue = obj.OrderQueue[0 : len(obj.OrderQueue)-1]
+					newHex.Unit = obj
+					return
+				} else {
+					obj.NextDest(world)
+				}
 			}
 		}
-
 	}
 }
 

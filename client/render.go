@@ -73,35 +73,8 @@ func (r *MapRenderer) buildVertices(m *Map) {
 	for i := 0; i < m.Width*m.Depth; i++ {
 
 		hex := m.Index(i)
-		color := [3]float32{}
+		color := hex.Color
 		fx, fy, fz := m.HexCenter(hex)
-
-		switch hex.TerrainType {
-		case T_BOUNDS:
-			v := float32(math.Sqrt(float64(fy))/4) - 0.05
-			color = [3]float32{v, v, v}
-			fy = 0.0
-		case T_RIVER:
-			color = [3]float32{0.1, 0.1, fy*1.5 + 0.2}
-			fy = 0.125
-		case T_BEACH:
-			color = [3]float32{fy * 1.6, fy * 1.6, 0.6}
-			fy = 0.125
-		case T_OUTDOOR:
-			color = [3]float32{0.1, fy, 0.1}
-			fy = 0.375
-		case T_FOREST:
-			color = [3]float32{0, fy / 3, 0}
-			fy = 0.625
-
-		case T_HILL:
-			v := float32(fy*fy) - 0.3
-			color = [3]float32{v, v, v}
-			fy = 1.875
-		}
-
-		fy *= 32
-		hex.Height = float64(fy)
 
 		// build hex points around center
 		r.hexes.vertices = append(r.hexes.vertices,

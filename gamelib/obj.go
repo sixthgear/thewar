@@ -3,6 +3,10 @@ package gamelib
 import "math/rand"
 
 const (
+	TURN_TICKS = 12
+)
+
+const (
 	OBJ_INFANTRY = iota
 	OBJ_VEHICLE
 	OBJ_BOAT
@@ -109,6 +113,21 @@ func (o *Obj) calcObjStats() {
 	// and for the UI to reflect the impossibility of the action
 	// suitable stats to make impossible are mv and at
 
+}
+
+func (o *Obj) NextDest(world *Map) {
+	order := o.OrderQueue[0]
+	o.Dest = world.Index(order.Path[len(order.Path)-1])
+	cost := 1 - TMOD[o.Type][o.Dest.TerrainType].MOV
+	o.AnimCounter = 0
+	// if obj.Type == OBJ_AIRCRAFT {
+	// 	x := float64(obj.Dest.Index%world.Width - obj.X)
+	// 	y := float64(obj.Dest.Index/world.Width - obj.Y)
+	// 	h := int(TURN_TICKS*math.Hypot(y, x)) / 2
+	// 	obj.AnimTotal = h
+	// } else {
+	o.AnimTotal = TURN_TICKS * cost
+	// }
 }
 
 func GenerateObjects(world *Map) {

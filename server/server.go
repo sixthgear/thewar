@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	TURN_TICKS = 12
-	M_WIDTH    = 64
-	M_DEPTH    = 64
+	M_WIDTH = 64
+	M_DEPTH = 64
 )
 
 var (
