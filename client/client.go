@@ -32,16 +32,17 @@ var (
 
 func main() {
 
+	var err error
+
 	port := flag.Int("port", 11235, "Port to listen on.")
 	ip := flag.String("ip", "0.0.0.0", "Address to connect to.")
+	flag.Parse()
 
-	var err error
 	conn, err = net.Dial("tcp", *ip+":"+fmt.Sprintf("%d", *port))
 	if err != nil {
 		log.Fatal("Could not connect. \n", err)
 	}
 
-	flag.Parse()
 	initGame()
 	run()
 }
