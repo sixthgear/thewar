@@ -4,8 +4,8 @@ import "log"
 import "github.com/go-gl/glfw"
 
 const (
-	W_WIDTH  = 720
-	W_HEIGHT = 450
+	W_WIDTH  = 1152
+	W_HEIGHT = 720
 	W_WMODE  = glfw.Windowed // glfw.Fullscreen 
 )
 

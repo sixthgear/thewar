@@ -138,9 +138,7 @@ func reqOrder(mx, my int) {
 			// is a hex and no other.Unit here
 			// find a path
 			unit := world.Selected.Unit
-			path := make([]int, 0)
-
-			path = FindPath(world, world.Selected, hex)
+			path := FindPath(world, world.Selected, hex)
 
 			o := Order{OR_MOVE, unit.Id, path}
 			conn.Write(o.Encode())
