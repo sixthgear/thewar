@@ -139,7 +139,7 @@ func reqOrder(mx, my int) {
 			unit := world.Selected.Unit
 			path := FindPath(world, world.Selected, hex)
 
-			o := Order{OR_MOVE, unit.Id, path}
+			o := Order{OR_MOVE, unit.Id, path[0 : len(path)-1]}
 			conn.Write(o.Encode())
 
 			world.Selected = nil
