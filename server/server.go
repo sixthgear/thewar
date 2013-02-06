@@ -16,10 +16,9 @@ const (
 )
 
 var (
-	port    int
-	world   *Map
-	running bool
-	// pathCache   map[int][]int
+	port        int
+	world       *Map
+	running     bool
 	channel     = make(chan *Order)
 	connections = make(map[net.Addr]net.Conn)
 )
@@ -30,7 +29,6 @@ func main() {
 	flag.Parse()
 	log.Printf("Starting server on port %d...\n", *port)
 
-	// pathCache = make(map[int][]int, 32)
 	running = true
 	world = new(Map)
 	world.Init(M_WIDTH, M_DEPTH)

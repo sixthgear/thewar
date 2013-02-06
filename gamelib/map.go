@@ -268,5 +268,12 @@ func (m *Map) Encode() []byte {
 
 func (m *Map) Decode(data []byte) (*Map, error) {
 	err := json.Unmarshal(data, m)
+
+	// reconect object references
+	for i := range m.Objects {
+		o := m.Objects[i]
+		m.Lookup(o.X, o.Y).Unit = o
+	}
+
 	return m, err
 }

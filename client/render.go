@@ -40,7 +40,7 @@ type RenderList struct {
 func (r *MapRenderer) Init() {
 
 	// create camera
-	r.camera = &Camera{x: M_WIDTH * HEX_WIDTH * 0.5, y: 1200, z: M_DEPTH*HEX_HEIGHT*0.5 + 900, rx: 80, ry: 0, rz: 0}
+	r.camera = &Camera{x: float64(world.Width) * HEX_WIDTH * 0.5, y: 1200, z: float64(world.Depth)*HEX_HEIGHT*0.5 + 900, rx: 80, ry: 0, rz: 0}
 	r.camera.Init(W_WIDTH, W_HEIGHT, W_FAR, W_FOV)
 
 	// load resources
@@ -205,6 +205,7 @@ func (r *MapRenderer) Render(m *Map) {
 	gl.PushClientAttrib(gl.CLIENT_VERTEX_ARRAY_BIT)
 	gl.PushAttrib(gl.CURRENT_BIT | gl.ENABLE_BIT | gl.LINE_BIT | gl.DEPTH_BUFFER_BIT)
 
+	gl.DisableClientState(gl.TEXTURE_COORD_ARRAY)
 	// draw r.hexes and terrain
 	gl.EnableClientState(gl.COLOR_ARRAY)
 	gl.ColorPointer(3, gl.FLOAT, 0, r.hexes.colors)

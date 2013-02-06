@@ -17,6 +17,7 @@ type TextLabel struct {
 	Y       float32
 	Size    int
 	Text    string
+	Color   [3]float32
 	Font    *Font
 	letters RenderList
 }
@@ -122,6 +123,7 @@ func (t *TextLabel) Init(text string, f *Font, x, y float32) {
 	t.Y = y
 	t.Font = f
 	t.SetText(text)
+	t.Color = [3]float32{1, 1, 1}
 }
 
 func (t *TextLabel) SetText(text string) {
@@ -147,9 +149,9 @@ func (t *TextLabel) SetText(text string) {
 			)
 			kern += c.XAdvance
 			texL := c.X / 256
-			texT := c.Y / 128
+			texT := c.Y / 256
 			texR := texL + c.Width/256
-			texB := texT + c.Height/128
+			texB := texT + c.Height/256
 			t.letters.texcoords = append(t.letters.texcoords,
 				texL, texT,
 				texR, texT,
@@ -177,7 +179,7 @@ func (t *TextLabel) Render(c *Camera) {
 	// gl.BlendFunc(gl.SRC_ALPHA, gl.DST_ALPHA)
 	gl.TexEnvi(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
 	gl.Translatef(t.X, t.Y, 0)
-	gl.Color4f(1, 1, 1, 1)
+	gl.Color4f(t.Color[0], t.Color[1], t.Color[2], 1)
 	gl.DrawArrays(t.letters.GLtype, 0, len(t.letters.vertices)/2)
 	t.Font.glyphs.Unbind(gl.TEXTURE_2D)
 

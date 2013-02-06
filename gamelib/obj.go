@@ -82,6 +82,7 @@ type Obj struct {
 	Id          uint    // unique identifier
 	Team        int     // who does this unit belong to?
 	Type        int     // what kind of unit is this?
+	AP          int     // remaining action points
 	X, Y        int     // current grid position
 	Fx, Fy, Fz  float32 // current world position
 	AnimCounter int     // animation counter

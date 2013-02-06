@@ -23,5 +23,5 @@ _testmain.go
 
 build/
 work/
-client
-server
+client/client
+server/server

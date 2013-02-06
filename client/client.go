@@ -10,14 +10,10 @@ import (
 	"math"
 	"net"
 	"time"
-	// "flag"
-	// "os/exec"
-	// "encoding/json"
 )
 
 const (
-	M_WIDTH = 64
-	M_DEPTH = 64
+	DEBUG = true
 )
 
 var (
@@ -30,34 +26,26 @@ var (
 	conn                   net.Conn
 	channel                chan *Order      = make(chan *Order)
 	fonts                  map[string]*Font = make(map[string]*Font, 5)
-	coords                 *TextLabel
+	timer                  int
+	timerLabel             *TextLabel
+	roundLabel             *TextLabel
+	unitLabel              *TextLabel
 	user                   string
 )
 
 func main() {
+
 	var err error
 
-	ip := "64.46.1.232"
+	ip := "50.116.23.139"
 	port := 11235
-
-	// port := flag.Int("port", 11235, "Port to listen on.")
-	// ip := flag.String("ip", "0.0.0.0", "Address to connect to.")
-	// username := flag.String("user", "dumbo", "Username")
-	// flag.Parse()
-
-	// if *ip == "0.0.0.0" {
-	// 	log.Println("Starting local server...")
-	// 	cmd := exec.Command("../server/server", "")
-	// 	go cmd.Run()
-	// 	time.Sleep(time.Second * 3)
-	// }
-
-	// user := *username
 	user = "sixthgear"
 
 	conn, err = net.Dial("tcp", ip+":"+fmt.Sprintf("%d", port))
 	if err != nil {
-		log.Fatal("Could not connect. \n", err)
+		if DEBUG {
+			log.Fatal("Could not connect. \n", err)
+		}
 	}
 
 	initGame()
@@ -69,34 +57,32 @@ func initGame() {
 	pathCache = make(map[int][]int, 32)
 	running = true
 	world = new(Map)
+	world, _ = new(Map).Decode(reqMap())
 
 	initWindow()
 	gl.Init()
 	renderer = new(MapRenderer)
 	renderer.Init()
+	renderer.buildVertices(world)
 	initCallbacks()
 
-	// world.Init(M_WIDTH, M_DEPTH)
-	world, _ = new(Map).Decode(reqMap())
-	renderer.buildVertices(world)
-
-	// reconect object references
-	for i := range world.Objects {
-		o := world.Objects[i]
-		world.Lookup(o.X, o.Y).Unit = o
-	}
-	// GenerateObjects(world)
 	renderer.buildObjects(world)
 	renderer.clearPath()
 
-	// var err error
-	fonts["cambria"] = new(Font)
-	fonts["cambria"], _ = fonts["cambria"].Load("cambria")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	coords = new(TextLabel)
-	coords.Init(user, fonts["cambria"], 4, 4)
+	fonts["rockwell24"] = new(Font)
+	fonts["rockwell24"], _ = fonts["rockwell24"].Load("rockwell24")
+
+	fonts["rockwell36"] = new(Font)
+	fonts["rockwell36"], _ = fonts["rockwell36"].Load("rockwell36")
+
+	roundLabel = new(TextLabel)
+	roundLabel.Init("ROUND 1", fonts["rockwell36"], 4, 4)
+
+	timerLabel = new(TextLabel)
+	timerLabel.Init("TIME 2:00", fonts["rockwell24"], 4, 40)
+
+	unitLabel = new(TextLabel)
+	unitLabel.Init("-", fonts["rockwell24"], 4, W_HEIGHT-28)
 
 }
 
@@ -151,10 +137,22 @@ func doSelect(mx, my int) {
 		// either not a hex, or no unit here		
 		world.Selected = nil
 		renderer.clearPath()
+		unitLabel.SetText("-")
 	} else {
 		// data, _ := json.MarshalIndent(hex.Unit, "", "\t")
 		// fmt.Printf("%s\n", data)
 		world.Selected = hex
+		switch hex.Unit.Type {
+		case OBJ_INFANTRY:
+			unitLabel.SetText("INFANTRY")
+		case OBJ_VEHICLE:
+			unitLabel.SetText("VEHICLE")
+		case OBJ_BOAT:
+			unitLabel.SetText("BOAT")
+		case OBJ_AIRCRAFT:
+			unitLabel.SetText("AIRCRAFT")
+		}
+
 	}
 }
 
@@ -180,6 +178,7 @@ func reqOrder(mx, my int) {
 
 			world.Selected = nil
 			renderer.clearPath()
+			unitLabel.SetText("-")
 		} else {
 			// invalid order
 			// do nothing
@@ -193,7 +192,10 @@ func handleOrder(o Order) {
 		// log.Println("MOVE")
 		doMove(o)
 	default:
-		log.Println("Unhandled order: ", o.Order)
+		if DEBUG {
+			log.Println("Unhandled order: ", o.Order)
+		}
+
 	}
 }
 
@@ -328,19 +330,23 @@ func communicate(channel chan *Order) {
 	for {
 		data, _ := bufio.NewReader(conn).ReadBytes('\n')
 		if len(data) == 0 {
-			log.Println("Server closed connection!")
+			if DEBUG {
+				log.Println("Server closed connection!")
+			}
 			conn.Close()
 			return
 		}
 		order, _ := new(Order).Decode(data)
-		log.Printf("%s", data)
+		if DEBUG {
+			log.Printf("%s", data)
+		}
 		channel <- order
 	}
 
 }
 
 func run() {
-
+	timer = 120
 	t := 0.0
 	const dt = 1.0 / 60
 	currentTime := float64(time.Now().UnixNano()) / 1000000000
@@ -372,10 +378,21 @@ func run() {
 			t += dt
 		}
 
+		timerFloat := math.Max(0, 120-t)
+		if int(timerFloat) != timer {
+			timer = int(timerFloat)
+			timerLabel.SetText(fmt.Sprintf("TIME %d:%02d", timer/60, timer%60))
+			if timer <= 10 {
+				timerLabel.Color = [3]float32{1, 0.2, 0.2}
+			}
+		}
+
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 		gl.LoadIdentity()
 		renderer.Render(world)
-		coords.Render(renderer.camera)
+		timerLabel.Render(renderer.camera)
+		roundLabel.Render(renderer.camera)
+		unitLabel.Render(renderer.camera)
 		glfw.SwapBuffers()
 	}
 
@@ -385,15 +402,9 @@ func run() {
 func handleKeyDown(key, state int) {
 	switch {
 	case key == 'R' && state == 1:
-		// world.Generate()
+		// 
 	case key == 'F' && state == 1:
-		// toggleFullScreen()
-		// renderer = new(MapRenderer)
-		// renderer.Init()
-		// initCallbacks()
-		// renderer.buildObjects(world)
-		// renderer.clearPath()
-
+		//
 	case key == glfw.KeyEsc && state == 1:
 		running = false
 	}

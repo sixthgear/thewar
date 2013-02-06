@@ -41,7 +41,7 @@ func FindPath(m *Map, start *Hex, goal *Hex) []int {
 	openset := make(map[int]*Node, len(m.Grid))
 	closedset := make(map[int]*Node, len(m.Grid))
 
-	if g(goal) < 9999 {
+	if g(goal) < 9999 { //&& m.Distance(start, goal) <= 7 
 		openset[start.Index] = &Node{start.Index, 0, h(start), nil}
 		heap.Push(&queue, openset[start.Index])
 	}
