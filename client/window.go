@@ -9,13 +9,17 @@ const (
 	W_WMODE  = glfw.Windowed // glfw.Fullscreen 
 )
 
+var (
+	currentWindowMode = W_WMODE
+)
+
 func initWindow() {
 
 	if err := glfw.Init(); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	if err := glfw.OpenWindow(W_WIDTH, W_HEIGHT, 8, 8, 8, 8, 32, 0, W_WMODE); err == nil {
+	if err := glfw.OpenWindow(W_WIDTH, W_HEIGHT, 8, 8, 8, 8, 32, 0, currentWindowMode); err == nil {
 		glfw.SetWindowTitle("The War")
 		glfw.SetSwapInterval(1)
 		glfw.Enable(glfw.MouseCursor)
@@ -35,5 +39,21 @@ func initCallbacks() {
 }
 
 func closeWindow() {
+	glfw.CloseWindow()
 	glfw.Terminate()
+}
+
+func toggleFullScreen() {
+
+	if currentWindowMode == glfw.Windowed {
+		currentWindowMode = glfw.Fullscreen
+	} else {
+		currentWindowMode = glfw.Windowed
+	}
+
+	glfw.CloseWindow()
+	glfw.OpenWindow(W_WIDTH, W_HEIGHT, 8, 8, 8, 8, 32, 0, currentWindowMode)
+
+	initCallbacks()
+
 }

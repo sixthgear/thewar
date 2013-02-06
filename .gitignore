@@ -21,4 +21,7 @@ _testmain.go
 
 *.exe
 
+build/
 work/
+client
+server

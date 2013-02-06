@@ -113,6 +113,9 @@ func (m *Map) Index(i int) *Hex {
 	return &m.Grid[i]
 }
 func (m *Map) Lookup(x, y int) *Hex {
+	if x < 0 || x >= m.Width || y < 0 || y >= m.Depth {
+		return nil
+	}
 	return &m.Grid[y*m.Width+x]
 }
 

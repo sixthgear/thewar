@@ -2,15 +2,17 @@ package main
 
 import (
 	"bufio"
-	// "encoding/json"
-	"flag"
 	"fmt"
 	"github.com/go-gl/glfw"
+	"github.com/mjard/gl"
 	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"math"
 	"net"
 	"time"
+	// "flag"
+	// "os/exec"
+	// "encoding/json"
 )
 
 const (
@@ -26,18 +28,34 @@ var (
 	lastPath               int
 	prevMouseX, prevMouseY int = glfw.MousePos()
 	conn                   net.Conn
-	channel                chan *Order = make(chan *Order)
+	channel                chan *Order      = make(chan *Order)
+	fonts                  map[string]*Font = make(map[string]*Font, 5)
+	coords                 *TextLabel
+	user                   string
 )
 
 func main() {
-
 	var err error
 
-	port := flag.Int("port", 11235, "Port to listen on.")
-	ip := flag.String("ip", "0.0.0.0", "Address to connect to.")
-	flag.Parse()
+	ip := "64.46.1.232"
+	port := 11235
 
-	conn, err = net.Dial("tcp", *ip+":"+fmt.Sprintf("%d", *port))
+	// port := flag.Int("port", 11235, "Port to listen on.")
+	// ip := flag.String("ip", "0.0.0.0", "Address to connect to.")
+	// username := flag.String("user", "dumbo", "Username")
+	// flag.Parse()
+
+	// if *ip == "0.0.0.0" {
+	// 	log.Println("Starting local server...")
+	// 	cmd := exec.Command("../server/server", "")
+	// 	go cmd.Run()
+	// 	time.Sleep(time.Second * 3)
+	// }
+
+	// user := *username
+	user = "sixthgear"
+
+	conn, err = net.Dial("tcp", ip+":"+fmt.Sprintf("%d", port))
 	if err != nil {
 		log.Fatal("Could not connect. \n", err)
 	}
@@ -53,6 +71,7 @@ func initGame() {
 	world = new(Map)
 
 	initWindow()
+	gl.Init()
 	renderer = new(MapRenderer)
 	renderer.Init()
 	initCallbacks()
@@ -70,6 +89,15 @@ func initGame() {
 	renderer.buildObjects(world)
 	renderer.clearPath()
 
+	// var err error
+	fonts["cambria"] = new(Font)
+	fonts["cambria"], _ = fonts["cambria"].Load("cambria")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	coords = new(TextLabel)
+	coords.Init(user, fonts["cambria"], 4, 4)
+
 }
 
 func hexAt(mx, my int) *Hex {
@@ -85,6 +113,14 @@ func hexAt(mx, my int) *Hex {
 }
 
 func doHover(mx, my int) {
+
+	// if world != nil && coords != nil {
+	// 	hex := hexAt(mx, my)
+	// 	if hex != nil {
+	// 		coords.SetText(fmt.Sprintf("X: %d, Y: %d", hex.Index%world.Width, hex.Index/world.Width))
+	// 	}
+	// }
+
 	if world.Selected != nil {
 		// calc path
 		hex := hexAt(mx, my)
@@ -193,6 +229,16 @@ func update(dt float64) {
 		renderer.camera.rx -= 1
 	} else if kf.tiltDown {
 		renderer.camera.rx += 1
+	}
+	if prevMouseX < 10 {
+		renderer.camera.x -= 10 * (renderer.camera.y * 0.0015)
+	} else if prevMouseX > W_WIDTH-10 {
+		renderer.camera.x += 10 * (renderer.camera.y * 0.0015)
+	}
+	if prevMouseY < 10 {
+		renderer.camera.z -= 10 * (renderer.camera.y * 0.0015)
+	} else if prevMouseY > W_HEIGHT-10 {
+		renderer.camera.z += 10 * (renderer.camera.y * 0.0015)
 	}
 
 	for i := range world.Objects {
@@ -326,8 +372,11 @@ func run() {
 			t += dt
 		}
 
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		gl.LoadIdentity()
 		renderer.Render(world)
-
+		coords.Render(renderer.camera)
+		glfw.SwapBuffers()
 	}
 
 	closeWindow()
@@ -337,6 +386,14 @@ func handleKeyDown(key, state int) {
 	switch {
 	case key == 'R' && state == 1:
 		// world.Generate()
+	case key == 'F' && state == 1:
+		// toggleFullScreen()
+		// renderer = new(MapRenderer)
+		// renderer.Init()
+		// initCallbacks()
+		// renderer.buildObjects(world)
+		// renderer.clearPath()
+
 	case key == glfw.KeyEsc && state == 1:
 		running = false
 	}
@@ -346,6 +403,7 @@ func handleMousePos(mx, my int) {
 	deltaX, deltaY := float64(mx-prevMouseX), float64(my-prevMouseY)
 	prevMouseX = mx
 	prevMouseY = my
+
 	if glfw.MouseButton(glfw.MouseMiddle) == 1 {
 		renderer.camera.x -= deltaX * (renderer.camera.y * 0.0015)
 		renderer.camera.z -= deltaY * (renderer.camera.y * 0.0015)

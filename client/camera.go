@@ -16,22 +16,35 @@ func (c *Camera) Init(width, height, far, fov float64) {
 	gl.MatrixMode(gl.MODELVIEW)
 }
 
-// func (c *Camera) OrthoIn(width, height float64) {
-// 	// 	gl.Viewport(0, 0, w, h)
-// 	gl.PushMatrix()
-// 	gl.PushAttrib(gl.CURRENT_BIT | gl.COLOR_BUFFER_BIT | gl.ENABLE_BIT | gl.LIGHTING_BIT | gl.POLYGON_BIT | gl.LINE_BIT)
-// 	gl.MatrixMode(gl.PROJECTION)
-// 	gl.LoadIdentity()
-// 	gl.Ortho(0, float64(width), float64(height), 0, 0, 1)
-// 	gl.MatrixMode(gl.MODELVIEW)
-// }
+func (c *Camera) OrthoIn(width, height float64) {
 
-// func (c *Camera) OrthoOut() {
-// 	// gl.Viewport(0, 0, w, h)
-// 	gl.PopAttrib()
-// 	gl.PopMatrix()
+	// gl.Viewport(0, 0, W_WIDTH, W_HEIGHT)
 
-// }
+	// gl.PushAttrib(gl.CURRENT_BIT | gl.COLOR_BUFFER_BIT | gl.ENABLE_BIT | gl.LIGHTING_BIT | gl.POLYGON_BIT | gl.LINE_BIT)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	gl.Ortho(0, float64(width), float64(height), 0, -1, 1)
+	gl.MatrixMode(gl.MODELVIEW)
+	gl.PushMatrix()
+	gl.LoadIdentity()
+	gl.Disable(gl.DEPTH_TEST)
+}
+
+func (c *Camera) OrthoOut() {
+	// gl.Viewport(0, 0, W_WIDTH, W_HEIGHT)
+
+	gl.Enable(gl.DEPTH_TEST)
+
+	// gl.PopMatrix()
+	// glu.Perspective(W_FOV, W_WIDTH/W_HEIGHT, 1.0, W_FAR)
+	gl.PopMatrix()
+	gl.MatrixMode(gl.PROJECTION)
+	gl.PopMatrix()
+	// glu.Perspective(W_FOV, W_WIDTH/W_HEIGHT, 1.0, W_FAR)
+	gl.MatrixMode(gl.MODELVIEW)
+
+}
 
 func (c *Camera) Enter() {
 	gl.PushMatrix()

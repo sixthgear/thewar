@@ -58,6 +58,7 @@ func (r *MapRenderer) Init() {
 	gl.DepthFunc(gl.LEQUAL)
 	gl.Color4f(1, 1, 1, 1)
 	gl.ClearColor(0.1, 0.05, 0.0, 1.0)
+
 }
 
 func (r *MapRenderer) buildVertices(m *Map) {
@@ -194,8 +195,8 @@ func (r *MapRenderer) clearPath() {
 
 func (r *MapRenderer) Render(m *Map) {
 
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	gl.LoadIdentity()
+	// gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	// gl.LoadIdentity()
 
 	r.camera.Enter()
 
@@ -258,5 +259,4 @@ func (r *MapRenderer) Render(m *Map) {
 	gl.PopClientAttrib()
 	r.camera.Exit()
 
-	glfw.SwapBuffers()
 }
