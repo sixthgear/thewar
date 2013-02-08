@@ -1,6 +1,6 @@
 package main
 
-import "github.com/mjard/gl"
+import "github.com/go-gl/gl"
 import "github.com/go-gl/glu"
 
 type Camera struct {

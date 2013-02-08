@@ -119,9 +119,9 @@ func (m *Map) Lookup(x, y int) *Hex {
 	return &m.Grid[y*m.Width+x]
 }
 
-func (m *Map) Generate() {
+func (m *Map) Generate(width, depth int) *Map {
 
-	m.Init(m.Width, m.Depth)
+	m.Init(width, depth)
 	m.Seed = time.Now().UTC().UnixNano()
 	// fmt.Println("seed:", m.Seed)
 	rand.Seed(m.Seed)
@@ -168,6 +168,8 @@ func (m *Map) Generate() {
 			hex.Height = 1.875 * 32
 		}
 	}
+
+	return m
 }
 
 func (m *Map) Direction(a, b *Hex) (dist int) {

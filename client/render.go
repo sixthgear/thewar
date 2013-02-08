@@ -2,8 +2,8 @@ package main
 
 import (
 	// "fmt"
+	"github.com/go-gl/gl"
 	"github.com/go-gl/glfw"
-	"github.com/mjard/gl"
 	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"math"
@@ -37,7 +37,9 @@ type RenderList struct {
 	texcoords []float32
 }
 
-func (r *MapRenderer) Init() {
+func (r *MapRenderer) Init() *MapRenderer {
+
+	gl.Init()
 
 	// create camera
 	r.camera = &Camera{x: float64(world.Width) * HEX_WIDTH * 0.5, y: 1200, z: float64(world.Depth)*HEX_HEIGHT*0.5 + 900, rx: 80, ry: 0, rz: 0}
@@ -58,6 +60,8 @@ func (r *MapRenderer) Init() {
 	gl.DepthFunc(gl.LEQUAL)
 	gl.Color4f(1, 1, 1, 1)
 	gl.ClearColor(0.1, 0.05, 0.0, 1.0)
+
+	return r
 
 }
 

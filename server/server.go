@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"runtime"
+	"time"
 )
 
 const (
@@ -19,8 +20,7 @@ var (
 	port        int
 	world       *Map
 	running     bool
-	channel     = make(chan *Order)
-	connections = make(map[net.Addr]net.Conn)
+	connections map[net.Addr]net.Conn
 )
 
 func main() {
@@ -29,34 +29,13 @@ func main() {
 	flag.Parse()
 	log.Printf("Starting server on port %d...\n", *port)
 
-	running = true
-	world = new(Map)
-	world.Init(M_WIDTH, M_DEPTH)
-	world.Generate()
+	world = new(Map).Generate(M_WIDTH, M_DEPTH)
 	GenerateObjects(world)
 
 	run()
 }
 
-func listen() {
-	// block until a new connection arrives
-	ln, err := net.Listen("tcp", ":11235")
-	if err != nil {
-		log.Fatal("Unable to open socket. ", err)
-	}
-	for {
-		c, err := ln.Accept()
-		if err != nil {
-			log.Fatal("Error accepting connection. ", err)
-			continue
-		}
-
-		go handlePlayer(c)
-		runtime.Gosched()
-	}
-}
-
-func handlePlayer(c net.Conn) {
+func communicate(channel chan *Order, c net.Conn) {
 
 	a := c.RemoteAddr().String()
 
@@ -95,17 +74,48 @@ func handlePlayer(c net.Conn) {
 	}
 }
 
-func run() {
-
-	go listen()
-
+func listen(channel chan *Order) {
+	// block until a new connection arrives
+	ln, err := net.Listen("tcp", ":11235")
+	if err != nil {
+		log.Fatal("Unable to open socket. ", err)
+	}
 	for {
-		order := <-channel
-		// dispatch order to all connections
-		for i := range connections {
-			fmt.Fprintf(connections[i], "%s\n", order.Encode())
+		if c, err := ln.Accept(); err == nil {
+			go communicate(channel, c)
+		} else {
+			log.Fatal("Error accepting connection. ", err)
+			continue
 		}
 
+		runtime.Gosched()
+	}
+}
+
+func run() {
+
+	// set up network IO Loop
+	connections = make(map[net.Addr]net.Conn)
+	channel := make(chan *Order)
+	go listen(channel)
+
+	running = true
+
+	for {
+
+		var o *Order
+		select {
+		case o = <-channel:
+			// dispatch order to all connections
+			for i := range connections {
+				fmt.Fprintf(connections[i], "%s\n", o.Encode())
+			}
+		default:
+			time.Sleep(100 * time.Millisecond)
+			// runtime.Gosched()
+		}
+
+		// order := <-channel
 		// TODO actual simulation!
 	}
 

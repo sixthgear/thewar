@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/go-gl/gl"
 	"github.com/go-gl/glfw"
-	"github.com/mjard/gl"
 	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"math"
@@ -17,73 +17,74 @@ const (
 )
 
 var (
-	world                  *Map
-	renderer               *MapRenderer
-	running                bool
-	pathCache              map[int][]int
-	lastPath               int
-	prevMouseX, prevMouseY int = glfw.MousePos()
-	conn                   net.Conn
-	channel                chan *Order      = make(chan *Order)
-	fonts                  map[string]*Font = make(map[string]*Font, 5)
-	timer                  int
-	timerLabel             *TextLabel
-	roundLabel             *TextLabel
-	unitLabel              *TextLabel
-	user                   string
+	world      *Map
+	renderer   *MapRenderer
+	running    bool
+	pathCache  map[int][]int
+	lastPath   int
+	mx, my     int
+	conn       net.Conn
+	fonts      map[string]*Font
+	timer      int
+	timerLabel *TextLabel
+	roundLabel *TextLabel
+	unitLabel  *TextLabel
+	user       string
 )
 
 func main() {
 
 	var err error
 
-	ip := "50.116.23.139"
-	port := 11235
-	user = "sixthgear"
+	// set up window
+	initWindow()
 
-	conn, err = net.Dial("tcp", ip+":"+fmt.Sprintf("%d", port))
-	if err != nil {
-		if DEBUG {
-			log.Fatal("Could not connect. \n", err)
-		}
+	user = "sixthgear"
+	addressList := []string{
+		"0.0.0.0:11235",
+		"ironman.quitjobmakegames.com:11235",
+		"64.46.1.232:11235",
 	}
 
-	initGame()
-	run()
-}
+	// initiate connection
+	for a := range addressList {
+		if conn, err = net.Dial("tcp", addressList[a]); err != nil && DEBUG {
+			log.Printf("Could not connect to %s.\n", addressList[a])
+			continue
+		}
+		break
+	}
 
-func initGame() {
+	if conn == nil {
+		log.Fatalln("No available servers!")
+	}
 
-	pathCache = make(map[int][]int, 32)
-	running = true
-	world = new(Map)
+	// create world	
 	world, _ = new(Map).Decode(reqMap())
+	pathCache = make(map[int][]int, 32)
 
-	initWindow()
-	gl.Init()
-	renderer = new(MapRenderer)
-	renderer.Init()
+	// set up renderer
+	renderer = new(MapRenderer).Init()
 	renderer.buildVertices(world)
-	initCallbacks()
-
 	renderer.buildObjects(world)
 	renderer.clearPath()
 
-	fonts["rockwell24"] = new(Font)
-	fonts["rockwell24"], _ = fonts["rockwell24"].Load("rockwell24")
+	// load fonts
+	fonts = make(map[string]*Font, 5)
+	fonts["rockwell24"], _ = new(Font).Load("rockwell24")
+	fonts["rockwell36"], _ = new(Font).Load("rockwell36")
 
-	fonts["rockwell36"] = new(Font)
-	fonts["rockwell36"], _ = fonts["rockwell36"].Load("rockwell36")
+	// create UI
+	roundLabel = new(TextLabel).Init("ROUND 1", fonts["rockwell36"], 4, 4)
+	timerLabel = new(TextLabel).Init("TIME 2:00", fonts["rockwell24"], 4, 40)
+	unitLabel = new(TextLabel).Init(".", fonts["rockwell24"], 4, W_HEIGHT-28)
 
-	roundLabel = new(TextLabel)
-	roundLabel.Init("ROUND 1", fonts["rockwell36"], 4, 4)
+	// timer
+	timer = 120
 
-	timerLabel = new(TextLabel)
-	timerLabel.Init("TIME 2:00", fonts["rockwell24"], 4, 40)
-
-	unitLabel = new(TextLabel)
-	unitLabel.Init("-", fonts["rockwell24"], 4, W_HEIGHT-28)
-
+	// set up interface callbacks
+	initCallbacks()
+	run()
 }
 
 func hexAt(mx, my int) *Hex {
@@ -99,13 +100,6 @@ func hexAt(mx, my int) *Hex {
 }
 
 func doHover(mx, my int) {
-
-	// if world != nil && coords != nil {
-	// 	hex := hexAt(mx, my)
-	// 	if hex != nil {
-	// 		coords.SetText(fmt.Sprintf("X: %d, Y: %d", hex.Index%world.Width, hex.Index/world.Width))
-	// 	}
-	// }
 
 	if world.Selected != nil {
 		// calc path
@@ -137,10 +131,8 @@ func doSelect(mx, my int) {
 		// either not a hex, or no unit here		
 		world.Selected = nil
 		renderer.clearPath()
-		unitLabel.SetText("-")
+		unitLabel.SetText(".")
 	} else {
-		// data, _ := json.MarshalIndent(hex.Unit, "", "\t")
-		// fmt.Printf("%s\n", data)
 		world.Selected = hex
 		switch hex.Unit.Type {
 		case OBJ_INFANTRY:
@@ -152,7 +144,6 @@ func doSelect(mx, my int) {
 		case OBJ_AIRCRAFT:
 			unitLabel.SetText("AIRCRAFT")
 		}
-
 	}
 }
 
@@ -163,8 +154,8 @@ func reqMap() []byte {
 	// world.Decode(data)
 	return data
 }
-func reqOrder(mx, my int) {
 
+func reqOrder(mx, my int) {
 	if world.Selected != nil {
 		hex := hexAt(mx, my)
 		if hex != nil && hex.Unit == nil {
@@ -178,7 +169,7 @@ func reqOrder(mx, my int) {
 
 			world.Selected = nil
 			renderer.clearPath()
-			unitLabel.SetText("-")
+			unitLabel.SetText(".")
 		} else {
 			// invalid order
 			// do nothing
@@ -232,14 +223,14 @@ func update(dt float64) {
 	} else if kf.tiltDown {
 		renderer.camera.rx += 1
 	}
-	if prevMouseX < 10 {
+	if mx < 10 {
 		renderer.camera.x -= 10 * (renderer.camera.y * 0.0015)
-	} else if prevMouseX > W_WIDTH-10 {
+	} else if mx > W_WIDTH-10 {
 		renderer.camera.x += 10 * (renderer.camera.y * 0.0015)
 	}
-	if prevMouseY < 10 {
+	if my < 10 {
 		renderer.camera.z -= 10 * (renderer.camera.y * 0.0015)
-	} else if prevMouseY > W_HEIGHT-10 {
+	} else if my > W_HEIGHT-10 {
 		renderer.camera.z += 10 * (renderer.camera.y * 0.0015)
 	}
 
@@ -284,22 +275,24 @@ func animate(obj *Obj) {
 				t = float32(math.Min(1.0, float64(obj.AnimCounter)/TURN_TICKS)) // float64(obj.AnimTotal)		
 			}
 
-			ts := t * t
-			tc := ts * t
-
 			switch {
 			case obj.Type == OBJ_AIRCRAFT:
 				obj.Fx = x0 + (x1-x0)*t
 				obj.Fz = z0 + (z1-z0)*t
 			case y1 > y0:
+				ts := t * t
+				tc := ts * t
 				obj.Fx = x0 + (x1-x0)*ts
 				obj.Fz = z0 + (z1-z0)*ts
 				obj.Fy = y0 + (y1-y0)*(-2*tc*ts+-0.0025*ts*ts+10*tc+-15*ts+8*t)
 			case y1 < y0:
+				ts := t * t
+				tc := ts * t
 				obj.Fx = x0 + (x1-x0)*ts
 				obj.Fz = z0 + (z1-z0)*ts
 				obj.Fy = y0 + (y1-y0)*(2*ts*ts+2*tc+-3*ts)
 			default:
+				ts := t * t
 				obj.Fx = x0 + (x1-x0)*ts
 				obj.Fz = z0 + (z1-z0)*ts
 			}
@@ -346,16 +339,21 @@ func communicate(channel chan *Order) {
 }
 
 func run() {
-	timer = 120
-	t := 0.0
+
 	const dt = 1.0 / 60
+
+	// set up network IO loop
+	channel := make(chan *Order)
+	go communicate(channel)
+
+	t := 0.0
 	currentTime := float64(time.Now().UnixNano()) / 1000000000
 	accumulator := 0.0
-
-	go communicate(channel)
+	running = true
 
 	for running {
 
+		// animation loop ala Gaffer
 		newTime := float64(time.Now().UnixNano()) / 1000000000
 		frameTime := newTime - currentTime
 		currentTime = newTime
@@ -393,6 +391,7 @@ func run() {
 		timerLabel.Render(renderer.camera)
 		roundLabel.Render(renderer.camera)
 		unitLabel.Render(renderer.camera)
+
 		glfw.SwapBuffers()
 	}
 
@@ -410,20 +409,19 @@ func handleKeyDown(key, state int) {
 	}
 }
 
-func handleMousePos(mx, my int) {
-	deltaX, deltaY := float64(mx-prevMouseX), float64(my-prevMouseY)
-	prevMouseX = mx
-	prevMouseY = my
+func handleMousePos(nx, ny int) {
+	dx, dy := float64(nx-mx), float64(ny-my)
+	mx, my = nx, ny
 
 	if glfw.MouseButton(glfw.MouseMiddle) == 1 {
-		renderer.camera.x -= deltaX * (renderer.camera.y * 0.0015)
-		renderer.camera.z -= deltaY * (renderer.camera.y * 0.0015)
+		renderer.camera.x -= dx * (renderer.camera.y * 0.0015)
+		renderer.camera.z -= dy * (renderer.camera.y * 0.0015)
 	}
 	doHover(mx, my)
 }
 
 func handleMouseButton(button, state int) {
-	// fmt.Printf("button '%d' -> %d\n", button, state)
+
 	mx, my := glfw.MousePos()
 	switch {
 	case button == glfw.MouseLeft && state == 1:
@@ -434,7 +432,6 @@ func handleMouseButton(button, state int) {
 }
 
 func handleMouseWheel(pos int) {
-	// fmt.Println("hello!", delta)
-	// println(delta)
+
 	renderer.camera.y = 1200 - float64(pos)*25
 }

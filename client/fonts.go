@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/xml"
 	"fmt"
-	"github.com/mjard/gl"
+	"github.com/go-gl/gl"
 	"image"
 	"image/draw"
 	"image/png"
@@ -117,19 +117,21 @@ func (f *Font) Load(name string) (lf *Font, err error) {
 	return f, err
 }
 
-func (t *TextLabel) Init(text string, f *Font, x, y float32) {
+func (t *TextLabel) Init(text string, f *Font, x, y float32) *TextLabel {
 
 	t.X = x
 	t.Y = y
 	t.Font = f
 	t.SetText(text)
 	t.Color = [3]float32{1, 1, 1}
+
+	return t
 }
 
 func (t *TextLabel) SetText(text string) {
 
 	if text == t.Text {
-		return
+		return // text hasn't changed, do nothing
 	}
 
 	t.Text = text
@@ -160,12 +162,16 @@ func (t *TextLabel) SetText(text string) {
 			)
 		}
 	}
-
 }
 
 func (t *TextLabel) Render(c *Camera) {
 
 	c.OrthoIn(W_WIDTH, W_HEIGHT)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.Translatef(t.X, t.Y, 0)
+	gl.Color4f(t.Color[0], t.Color[1], t.Color[2], 1)
 
 	gl.EnableClientState(gl.VERTEX_ARRAY)
 	gl.VertexPointer(2, gl.FLOAT, 0, t.letters.vertices)
@@ -173,13 +179,6 @@ func (t *TextLabel) Render(c *Camera) {
 	gl.TexCoordPointer(2, gl.FLOAT, 0, t.letters.texcoords)
 
 	t.Font.glyphs.Bind(gl.TEXTURE_2D)
-
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	// gl.BlendFunc(gl.SRC_ALPHA, gl.DST_ALPHA)
-	gl.TexEnvi(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.MODULATE)
-	gl.Translatef(t.X, t.Y, 0)
-	gl.Color4f(t.Color[0], t.Color[1], t.Color[2], 1)
 	gl.DrawArrays(t.letters.GLtype, 0, len(t.letters.vertices)/2)
 	t.Font.glyphs.Unbind(gl.TEXTURE_2D)
 
