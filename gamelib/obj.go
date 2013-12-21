@@ -43,7 +43,7 @@ const IMPOSSIBLE = -9999
 
 type ObjStats struct {
 	MOV int // movement: hexes the unit may move
-	RAN int // range: hexes away the unit can effectively target 
+	RAN int // range: hexes away the unit can effectively target
 	VIS int // vision: hexes away the unit can see
 	STH int // stealth: hexes the unit will negate from enemy vision on visibility check
 	ATT int // attack: attack points the unit will contribute when attacking
@@ -88,8 +88,8 @@ type Obj struct {
 	AnimCounter int     // animation counter
 	AnimTotal   int     // animation counter
 	Damage      int     // one of four damage levels
-	Supression  int     // one of four supression levels	
-	Morale      int     // one of four morale levels	
+	Supression  int     // one of four supression levels
+	Morale      int     // one of four morale levels
 	Facing      int     // one of six directions, this affects the special flank modifier
 	StatsBase   ObjStats
 	StatsMod    ObjStats

@@ -3,6 +3,8 @@ package main
 import "github.com/go-gl/gl"
 import "github.com/go-gl/glu"
 
+// import "fmt"
+
 type Camera struct {
 	x, y, z    float64
 	rx, ry, rz float64
@@ -85,8 +87,8 @@ func (c *Camera) WorldCoords(mx, my int) (x, y, z float64) {
 	// ex0, ey0, ez0 := glu.UnProject(float64(mx), float64(my), 0, &model, &proj, &view)
 	// ex1, ey1, ez1 := glu.UnProject(float64(mx), float64(my), 1, &model, &proj, &view)
 
-	// now intesect line with 
-	//ex0 + (ex1-ex0)*s, ey0 + (ey1-ey0)*s, ez0 + (ez1-ez0)*s	
+	// now intesect line with
+	//ex0 + (ex1-ex0)*s, ey0 + (ey1-ey0)*s, ez0 + (ez1-ez0)*s
 	return glu.UnProject(float64(mx), float64(my), float64(mz), &model, &proj, &view)
 
 }

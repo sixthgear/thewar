@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/go-gl/gl"
-	"github.com/go-gl/glfw"
+	glfw "github.com/go-gl/glfw3"
 	. "github.com/sixthgear/thewar/gamelib"
 	"log"
 	"math"
 	"net"
+	"runtime"
 	"time"
 )
 
@@ -17,6 +18,7 @@ const (
 )
 
 var (
+	window     *glfw.Window
 	world      *Map
 	renderer   *MapRenderer
 	running    bool
@@ -34,7 +36,16 @@ var (
 
 func main() {
 
+	runtime.LockOSThread()
+
 	var err error
+
+	// set up GLFW
+	if !glfw.Init() {
+		log.Fatal("Could not initialize GLFW!")
+	}
+	defer glfw.Terminate()
+	glfw.SwapInterval(1)
 
 	// set up window
 	initWindow()
@@ -59,7 +70,7 @@ func main() {
 		log.Fatalln("No available servers!")
 	}
 
-	// create world	
+	// create world
 	world, _ = new(Map).Decode(reqMap())
 	pathCache = make(map[int][]int, 32)
 
@@ -128,7 +139,7 @@ func doHover(mx, my int) {
 func doSelect(mx, my int) {
 	hex := hexAt(mx, my)
 	if hex == nil || hex.Unit == nil {
-		// either not a hex, or no unit here		
+		// either not a hex, or no unit here
 		world.Selected = nil
 		renderer.clearPath()
 		unitLabel.SetText(".")
@@ -272,7 +283,7 @@ func animate(obj *Obj) {
 			if obj.Type == OBJ_AIRCRAFT {
 				t = float32(math.Min(1.0, float64(obj.AnimCounter)/float64(obj.AnimTotal)))
 			} else {
-				t = float32(math.Min(1.0, float64(obj.AnimCounter)/TURN_TICKS)) // float64(obj.AnimTotal)		
+				t = float32(math.Min(1.0, float64(obj.AnimCounter)/TURN_TICKS)) // float64(obj.AnimTotal)
 			}
 
 			switch {
@@ -392,46 +403,47 @@ func run() {
 		roundLabel.Render(renderer.camera)
 		unitLabel.Render(renderer.camera)
 
-		glfw.SwapBuffers()
+		window.SwapBuffers()
+		glfw.PollEvents()
 	}
 
 	closeWindow()
 }
 
-func handleKeyDown(key, state int) {
+func handleKeyDown(key glfw.Key, action glfw.Action) {
 	switch {
-	case key == 'R' && state == 1:
-		// 
-	case key == 'F' && state == 1:
+	case key == glfw.KeyR && action == glfw.Press:
 		//
-	case key == glfw.KeyEsc && state == 1:
+	case key == glfw.KeyF && action == glfw.Press:
+		//
+	case key == glfw.KeyEscape && action == glfw.Press:
 		running = false
 	}
 }
 
-func handleMousePos(nx, ny int) {
-	dx, dy := float64(nx-mx), float64(ny-my)
-	mx, my = nx, ny
+func handleMousePos(nx, ny float64) {
+	dx, dy := nx-float64(mx), ny-float64(my)
+	mx, my = int(nx), int(ny)
 
-	if glfw.MouseButton(glfw.MouseMiddle) == 1 {
+	if window.GetMouseButton(glfw.MouseButtonMiddle) == glfw.Press {
 		renderer.camera.x -= dx * (renderer.camera.y * 0.0015)
 		renderer.camera.z -= dy * (renderer.camera.y * 0.0015)
 	}
 	doHover(mx, my)
 }
 
-func handleMouseButton(button, state int) {
+func handleMouseButton(button glfw.MouseButton, action glfw.Action) {
 
-	mx, my := glfw.MousePos()
+	// fx, fy := window.GetCursorPosition()
 	switch {
-	case button == glfw.MouseLeft && state == 1:
+	case button == glfw.MouseButtonLeft && action == glfw.Press:
 		doSelect(mx, my)
-	case button == glfw.MouseRight && state == 1:
+	case button == glfw.MouseButtonRight && action == glfw.Press:
 		reqOrder(mx, my)
 	}
 }
 
-func handleMouseWheel(pos int) {
+func handleMouseWheel(pos float64) {
 
-	renderer.camera.y = 1200 - float64(pos)*25
+	renderer.camera.y += pos * -25
 }

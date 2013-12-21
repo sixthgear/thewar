@@ -1,6 +1,6 @@
 package main
 
-import "github.com/go-gl/glfw"
+import glfw "github.com/go-gl/glfw3"
 
 var kf KeyFlags
 
@@ -15,15 +15,15 @@ type KeyFlags struct {
 	tiltDown    bool
 }
 
-var keyBindings = map[int]*bool{
-	'W':            &kf.scrollUp,
-	'S':            &kf.scrollDown,
-	'A':            &kf.scrollLeft,
-	'D':            &kf.scrollRight,
-	'Z':            &kf.tiltUp,
-	'X':            &kf.tiltDown,
-	glfw.KeySpace:  &kf.zoomOut,
-	glfw.KeyLshift: &kf.zoomIn,
+var keyBindings = map[glfw.Key]*bool{
+	'W':               &kf.scrollUp,
+	'S':               &kf.scrollDown,
+	'A':               &kf.scrollLeft,
+	'D':               &kf.scrollRight,
+	'Z':               &kf.tiltUp,
+	'X':               &kf.tiltDown,
+	glfw.KeySpace:     &kf.zoomOut,
+	glfw.KeyLeftShift: &kf.zoomIn,
 	// glfw.KeyLeft:  &kf.left,
 	// glfw.KeyRight: &kf.left,
 	// glfw.KeyUp:    &kf.left,
@@ -32,6 +32,6 @@ var keyBindings = map[int]*bool{
 
 func (k *KeyFlags) PollInput() {
 	for k, v := range keyBindings {
-		*v = glfw.Key(k) == glfw.KeyPress
+		*v = window.GetKey(k) == glfw.Press
 	}
 }

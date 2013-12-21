@@ -1,12 +1,16 @@
 package main
 
 import (
-	// "fmt"
+	"bufio"
+	"fmt"
 	"github.com/go-gl/gl"
-	"github.com/go-gl/glfw"
 	. "github.com/sixthgear/thewar/gamelib"
-	"log"
+	"image"
+	"image/draw"
+	"image/png"
 	"math"
+	"os"
+	// "log"
 )
 
 type Renderer interface {
@@ -47,14 +51,8 @@ func (r *MapRenderer) Init() *MapRenderer {
 
 	// load resources
 	gl.Enable(gl.TEXTURE_2D)
-	r.texAtlas = gl.GenTexture()
-	r.texAtlas.Bind(gl.TEXTURE_2D)
-	if !glfw.LoadTexture2D("data/sprites.tga", 0) {
-		log.Fatal("Failed to load texture atlas!")
-	}
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	r.texAtlas.Unbind(gl.TEXTURE_2D)
+
+	r.texAtlas = r.LoadTexture("sprites.png")
 
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LEQUAL)
@@ -62,6 +60,35 @@ func (r *MapRenderer) Init() *MapRenderer {
 	gl.ClearColor(0.1, 0.05, 0.0, 1.0)
 
 	return r
+
+}
+
+func (r *MapRenderer) LoadTexture(name string) gl.Texture {
+
+	var imgF *os.File
+	var p image.Image
+	var err error
+
+	if imgF, err = os.Open(fmt.Sprintf("data/%s", name)); err != nil {
+		panic("Could not load image!")
+	} else {
+		defer imgF.Close()
+	}
+	if p, err = png.Decode(bufio.NewReader(imgF)); err != nil {
+		panic("Could not decode image!")
+	}
+
+	rgba := image.NewRGBA(image.Rect(0, 0, p.Bounds().Dx(), p.Bounds().Dy()))
+	draw.Draw(rgba, rgba.Bounds(), p, p.Bounds().Min, draw.Src)
+
+	tex := gl.GenTexture()
+	tex.Bind(gl.TEXTURE_2D)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, rgba.Bounds().Dx(), rgba.Bounds().Dy(), 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba.Pix)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	tex.Unbind(gl.TEXTURE_2D)
+
+	return tex
 
 }
 
@@ -97,7 +124,7 @@ func (r *MapRenderer) buildVertices(m *Map) {
 			r.hexes.colors = append(r.hexes.colors, color[0], color[1], color[2])
 		}
 
-		// create hex from 6 triangles		
+		// create hex from 6 triangles
 		for j := uint32(0); j < 6; j++ {
 			k := count + j + 1
 			kk := count + (j+1)%6 + 1
@@ -153,12 +180,12 @@ func (r *MapRenderer) buildObjects(m *Map) {
 		)
 
 		tx0 := float32(o.Team%4) / 4.0
-		ty0 := float32(o.Type%4) / 4.0
+		ty0 := float32(3-o.Type%4) / 4.0
 		tx1 := tx0 + 1.0/4.0
 		ty1 := ty0 + 1.0/4.0
 
-		r.objects.texcoords = append(r.objects.texcoords, tx0, ty1, tx0, ty0, tx1, ty0, tx1, ty1)
-		r.objects.texcoords = append(r.objects.texcoords, tx0, ty1, tx0, ty0, tx1, ty0, tx1, ty1)
+		r.objects.texcoords = append(r.objects.texcoords, tx0, ty0, tx0, ty1, tx1, ty1, tx1, ty0)
+		r.objects.texcoords = append(r.objects.texcoords, tx0, ty0, tx0, ty1, tx1, ty1, tx1, ty0)
 
 		count += 8
 	}

@@ -1,28 +1,22 @@
 package main
 
 import "log"
-import "github.com/go-gl/glfw"
+import glfw "github.com/go-gl/glfw3"
 
 const (
 	W_WIDTH  = 1152
 	W_HEIGHT = 720
-	W_WMODE  = glfw.Windowed // glfw.Fullscreen 
 )
 
 var (
-	currentWindowMode = W_WMODE
+	currentMonitor *glfw.Monitor = nil // glfw.Windowed // glfw.Fullscreen
 )
 
 func initWindow() {
-
-	if err := glfw.Init(); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	if err := glfw.OpenWindow(W_WIDTH, W_HEIGHT, 8, 8, 8, 8, 32, 0, currentWindowMode); err == nil {
-		glfw.SetWindowTitle("The War")
-		glfw.SetSwapInterval(1)
-		glfw.Enable(glfw.MouseCursor)
+	if w, err := glfw.CreateWindow(W_WIDTH, W_HEIGHT, "The War", currentMonitor, nil); err == nil {
+		window = w
+		window.MakeContextCurrent()
+		window.SetInputMode(glfw.Cursor, glfw.CursorNormal)
 	} else {
 		glfw.Terminate()
 		log.Fatal(err.Error())
@@ -31,29 +25,38 @@ func initWindow() {
 }
 
 func initCallbacks() {
-	glfw.SetWindowCloseCallback(func() int { running = false; return 0 })
-	glfw.SetMousePosCallback(func(mx, my int) { handleMousePos(mx, my) })
-	glfw.SetKeyCallback(func(key, state int) { handleKeyDown(key, state) })
-	glfw.SetMouseWheelCallback(func(pos int) { handleMouseWheel(pos) })
-	glfw.SetMouseButtonCallback(func(button, state int) { handleMouseButton(button, state) })
+	window.SetCloseCallback(func(w *glfw.Window) {
+		running = false
+	})
+	window.SetCursorPositionCallback(func(w *glfw.Window, mx float64, my float64) {
+		handleMousePos(mx, my)
+	})
+	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+		handleKeyDown(key, action)
+	})
+	window.SetScrollCallback(func(w *glfw.Window, xoff float64, yoff float64) {
+		handleMouseWheel(yoff)
+	})
+	window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+		handleMouseButton(button, action)
+	})
 }
 
 func closeWindow() {
-	glfw.CloseWindow()
-	glfw.Terminate()
+	window.SetShouldClose(true)
+	// glfw.CloseWindow()
 }
 
 func toggleFullScreen() {
 
-	if currentWindowMode == glfw.Windowed {
-		currentWindowMode = glfw.Fullscreen
+	if currentMonitor == nil {
+		currentMonitor, _ = glfw.GetPrimaryMonitor()
 	} else {
-		currentWindowMode = glfw.Windowed
+		currentMonitor = nil
 	}
 
-	glfw.CloseWindow()
-	glfw.OpenWindow(W_WIDTH, W_HEIGHT, 8, 8, 8, 8, 32, 0, currentWindowMode)
-
+	window.Destroy()
+	initWindow()
 	initCallbacks()
 
 }

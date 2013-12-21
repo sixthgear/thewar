@@ -10,6 +10,7 @@ const (
 	CMD_MAP_DATA
 	CMD_ORD_REQ
 	CMD_ORD_ACK
+	CMD_MSG_ACK
 	CMD_CHAT_REQ
 	CMD_CHAT_ACK
 	CMD_UNIT_ADD
@@ -23,6 +24,7 @@ var COMM = [...]Command{
 	CMD_MAP_DATA: Command{},
 	CMD_ORD_REQ:  Command{},
 	CMD_ORD_ACK:  Command{},
+	CMD_MSG_ACK:  Command{},
 	CMD_CHAT_REQ: Command{},
 	CMD_CHAT_ACK: Command{},
 	CMD_UNIT_ADD: Command{},
