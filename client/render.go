@@ -41,13 +41,13 @@ type RenderList struct {
 	texcoords []float32
 }
 
-func (r *MapRenderer) Init() *MapRenderer {
+func (r *MapRenderer) Init(width, height int) *MapRenderer {
 
 	gl.Init()
 
 	// create camera
 	r.camera = &Camera{x: float64(world.Width) * HEX_WIDTH * 0.5, y: 1200, z: float64(world.Depth)*HEX_HEIGHT*0.5 + 900, rx: 80, ry: 0, rz: 0}
-	r.camera.Init(W_WIDTH, W_HEIGHT, W_FAR, W_FOV)
+	r.camera.Init(float64(width), float64(height), W_FAR, W_FOV)
 
 	// load resources
 	gl.Enable(gl.TEXTURE_2D)
@@ -58,6 +58,11 @@ func (r *MapRenderer) Init() *MapRenderer {
 	gl.DepthFunc(gl.LEQUAL)
 	gl.Color4f(1, 1, 1, 1)
 	gl.ClearColor(0.1, 0.05, 0.0, 1.0)
+
+	// load fonts
+	fonts = make(map[string]*Font, 5)
+	fonts["rockwell24"], _ = new(Font).Load("rockwell24")
+	fonts["rockwell36"], _ = new(Font).Load("rockwell36")
 
 	return r
 

@@ -3,17 +3,20 @@ package main
 import "log"
 import glfw "github.com/go-gl/glfw3"
 
-const (
-	W_WIDTH  = 1152
-	W_HEIGHT = 720
-)
+func initWindow(mon *glfw.Monitor) {
 
-var (
-	currentMonitor *glfw.Monitor = nil // glfw.Windowed // glfw.Fullscreen
-)
+	var width, height int
 
-func initWindow() {
-	if w, err := glfw.CreateWindow(W_WIDTH, W_HEIGHT, "The War", currentMonitor, nil); err == nil {
+	if mon != nil {
+		videoMode, _ := mon.GetVideoMode()
+		width = videoMode.Width
+		height = videoMode.Height
+	} else {
+		width = W_WIDTH
+		height = W_HEIGHT
+	}
+
+	if w, err := glfw.CreateWindow(width, height, "The War", mon, nil); err == nil {
 		window = w
 		window.MakeContextCurrent()
 		window.SetInputMode(glfw.Cursor, glfw.CursorNormal)
@@ -32,7 +35,7 @@ func initCallbacks() {
 		handleMousePos(mx, my)
 	})
 	window.SetKeyCallback(func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-		handleKeyDown(key, action)
+		handleKeyDown(key, action, mods)
 	})
 	window.SetScrollCallback(func(w *glfw.Window, xoff float64, yoff float64) {
 		handleMouseWheel(yoff)
@@ -49,14 +52,22 @@ func closeWindow() {
 
 func toggleFullScreen() {
 
+	oldWindow := window
+
 	if currentMonitor == nil {
 		currentMonitor, _ = glfw.GetPrimaryMonitor()
 	} else {
 		currentMonitor = nil
 	}
 
-	window.Destroy()
-	initWindow()
+	initWindow(currentMonitor)
+	windowWidth, windowHeight := window.GetSize()
+	renderer.Init(windowWidth, windowHeight)
+
+	// window.SetShouldClose(true)
+	oldWindow.Destroy()
+
+	// initWindow()
 	initCallbacks()
 
 }

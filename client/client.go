@@ -14,24 +14,27 @@ import (
 )
 
 const (
-	DEBUG = true
+	DEBUG    = true
+	W_WIDTH  = 1152
+	W_HEIGHT = 720
 )
 
 var (
-	window     *glfw.Window
-	world      *Map
-	renderer   *MapRenderer
-	running    bool
-	pathCache  map[int][]int
-	lastPath   int
-	mx, my     int
-	conn       net.Conn
-	fonts      map[string]*Font
-	timer      int
-	timerLabel *TextLabel
-	roundLabel *TextLabel
-	unitLabel  *TextLabel
-	user       string
+	window         *glfw.Window
+	world          *Map
+	renderer       *MapRenderer
+	running        bool
+	pathCache      map[int][]int
+	lastPath       int
+	mx, my         int
+	conn           net.Conn
+	fonts          map[string]*Font
+	timer          int
+	timerLabel     *TextLabel
+	roundLabel     *TextLabel
+	unitLabel      *TextLabel
+	user           string
+	currentMonitor *glfw.Monitor // glfw.Windowed // glfw.Fullscreen
 )
 
 func main() {
@@ -48,13 +51,13 @@ func main() {
 	glfw.SwapInterval(1)
 
 	// set up window
-	initWindow()
+	currentMonitor, _ = glfw.GetPrimaryMonitor()
+	initWindow(currentMonitor)
 
 	user = "sixthgear"
 	addressList := []string{
 		"0.0.0.0:11235",
 		"ironman.quitjobmakegames.com:11235",
-		"64.46.1.232:11235",
 	}
 
 	// initiate connection
@@ -75,15 +78,12 @@ func main() {
 	pathCache = make(map[int][]int, 32)
 
 	// set up renderer
-	renderer = new(MapRenderer).Init()
+
+	windowWidth, windowHeight := window.GetSize()
+	renderer = new(MapRenderer).Init(windowWidth, windowHeight)
 	renderer.buildVertices(world)
 	renderer.buildObjects(world)
 	renderer.clearPath()
-
-	// load fonts
-	fonts = make(map[string]*Font, 5)
-	fonts["rockwell24"], _ = new(Font).Load("rockwell24")
-	fonts["rockwell36"], _ = new(Font).Load("rockwell36")
 
 	// create UI
 	roundLabel = new(TextLabel).Init("ROUND 1", fonts["rockwell36"], 4, 4)
@@ -410,12 +410,13 @@ func run() {
 	closeWindow()
 }
 
-func handleKeyDown(key glfw.Key, action glfw.Action) {
+func handleKeyDown(key glfw.Key, action glfw.Action, mods glfw.ModifierKey) {
+
 	switch {
 	case key == glfw.KeyR && action == glfw.Press:
 		//
 	case key == glfw.KeyF && action == glfw.Press:
-		//
+		toggleFullScreen()
 	case key == glfw.KeyEscape && action == glfw.Press:
 		running = false
 	}
